@@ -236,6 +236,22 @@ Un screen sans son suffixe, sans PascalCase, ou hors de son dossier de domaine e
 
 ---
 
+## Imports — règle absolue
+
+Tous les imports utilisent l'alias `@/`. Les chemins relatifs remontants (`../`) sont interdits et bloqués par ESLint.
+
+```ts
+// ✅ Correct
+import { atomWithMMKV } from '@/src/store/atomWithMMKV'
+import { UserDTO } from '@/src/api/dto/user/user.dto'
+
+// ❌ Interdit
+import { atomWithMMKV } from '../store/atomWithMMKV'
+import { UserDTO } from '../../api/dto/user/user.dto'
+```
+
+---
+
 ## Anti-patterns — à ne jamais faire
 
 | À éviter | À faire |
@@ -246,6 +262,7 @@ Un screen sans son suffixe, sans PascalCase, ou hors de son dossier de domaine e
 | `atom()` pour état persisté | `atomWithMMKV()` |
 | `AsyncStorage` | MMKV via `atomWithMMKV` |
 | `moment.js` | `Day.js` |
+| Imports relatifs remontants (`../`) | Toujours `@/` |
 | Screen hors de son dossier domaine | Placer dans `screens/<domaine>/` |
 | Screen sans suffixe `List`/`Detail`/`Screen` | Respecter les suffixes |
 | Screen en camelCase (`mealListScreen.tsx`) | PascalCase obligatoire (`MealListScreen.tsx`) |

@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "prepare": "husky"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -68,5 +69,14 @@
     "typescript": "~5.9.2",
     "validate-branch-name": "^1.3.2"
   },
-  "private": true
+  "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,json,md}": [
+      "prettier --write"
+    ]
+  }
 }

@@ -41,3 +41,15 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Claude Code — workspace interne (régénéré automatiquement)
+.agents/
+
+# Claude Code — skills tiers reinstallables via skills-lock.json
+.claude/skills/vercel-*/
+
+# Claude Code — résultats d'évaluations de skills
+.claude/skills/*-workspace/
+
+# Docs de planning personnel
+brief.md

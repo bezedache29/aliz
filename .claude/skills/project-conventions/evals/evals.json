@@ -1,0 +1,23 @@
+{
+  "skill_name": "project-conventions",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Crée un atom Jotai pour stocker le token d'authentification entre les sessions utilisateur dans le projet React Native aliz.",
+      "expected_output": "Un fichier TypeScript dans src/store/ qui utilise atomWithMMKV (pas atom() classique, pas AsyncStorage). Le fichier doit importer atomWithMMKV depuis ./atomWithMMKV.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "Crée le DTO, le mapper et le modèle pour une entité Meal (repas) qui a les champs: id, name, calories, createdAt. Inclus aussi l'endpoint pour fetcher la liste des repas depuis /api/meals.",
+      "expected_output": "4 fichiers: src/api/dto/meal/meal.dto.ts, src/api/mappers/meal/meal.mapper.ts (avec fonction nommée mealDTOtoMealModel), src/models/meal/meal.model.ts, src/api/endpoints/meal/meal.api.ts. Le DTO ne doit jamais être utilisé directement hors de la couche api/.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Crée le screen de liste des repas et le screen de détail d'un repas pour l'application React Native aliz. Le détail doit afficher le nom et les calories du repas.",
+      "expected_output": "2 fichiers dans src/screens/meal/ (ou screens/repas/): mealListScreen.tsx et mealDetailScreen.tsx. Les suffixes List et Detail sont obligatoires.",
+      "files": []
+    }
+  ]
+}

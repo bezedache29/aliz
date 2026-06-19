@@ -69,7 +69,27 @@ git checkout -b <branche>
 git add .
 git commit -m "<message>"
 git push -u origin <branche>
-gh pr create --base dev --title "<message>" --body ""
+```
+
+Puis créer la PR avec une description générée automatiquement à partir des changements :
+
+```bash
+gh pr create --base dev --title "<message>" --body "<description>"
+```
+
+### Description de la PR
+
+Générer la description en markdown à partir du `git diff --stat` et des fichiers modifiés.
+Elle doit donner à CodeRabbit le contexte nécessaire pour reviewer. Format :
+
+```markdown
+## Résumé
+
+<2-3 phrases décrivant ce qui a été fait et pourquoi>
+
+## Changements
+
+<liste bullet des fichiers/fonctionnalités modifiés>
 ```
 
 Afficher le lien de la PR à la fin.

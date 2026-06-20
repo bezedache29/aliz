@@ -15,7 +15,7 @@ Workflow git interactif pour le projet aliz. Toujours proposer avant d'exécuter
 
 ## Conventions
 
-**Branches** — `<type>/<description-en-kebab-case>`
+**Branches** — `<type>/<description-in-english-kebab-case>`
 
 | Type           | Quand                                     |
 | -------------- | ----------------------------------------- |
@@ -24,7 +24,9 @@ Workflow git interactif pour le projet aliz. Toujours proposer avant d'exécuter
 | `chore/`       | Config, dépendances, tooling              |
 | `refactoring/` | Refactorisation sans nouveau comportement |
 
-Exemples : `feature/login`, `fix/crash-splash-screen`, `chore/setup-husky`
+La description après le `/` est **toujours en anglais**.
+
+Exemples : `feature/login`, `fix/splash-screen-crash`, `chore/setup-husky`, `docs/readme`
 
 **Commits** — Conventional Commits : `<type>: <description en français>`
 
@@ -69,7 +71,15 @@ git checkout -b <branche>
 git add .
 git commit -m "<message>"
 git push -u origin <branche>
-gh pr create --base dev --title "<message>" --body ""
+gh pr create --base dev --title "<message>" --body "$(cat <<'EOF'
+## Changements
+
+- <bullet point par changement significatif>
+
+EOF
+)"
 ```
+
+La description doit lister en bullets les changements principaux (fichiers modifiés, features ajoutées, corrections). Jamais de `--body ""`.
 
 Afficher le lien de la PR à la fin.

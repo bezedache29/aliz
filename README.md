@@ -1,50 +1,200 @@
-# Welcome to your Expo app 👋
+# Aliz — Nutrition personnalisée avec IA
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Application mobile de nutrition intelligente, orientée perte de poids et réalimentation.
+> Génère des recettes adaptées à tes aliments disponibles, tes objectifs nutritionnels et ton activité physique du jour.
 
-## Get started
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-blue)
+![Expo](https://img.shields.io/badge/Expo-54-black?logo=expo)
+![React Native](https://img.shields.io/badge/React%20Native-0.79-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript)
+![Backend](https://img.shields.io/badge/Backend-Laravel-FF2D20?logo=laravel)
+![IA](https://img.shields.io/badge/IA-Claude%20Sonnet-8B5CF6)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## Présentation
 
-2. Start the app
+Aliz calcule ton objectif calorique quotidien en croisant ton profil (BMR/TDEE), tes données de pesée Renpho et ton activité physique récupérée depuis Strava. L'IA génère ensuite des recettes qui respectent tes macros du jour, tes aliments disponibles et tes contraintes matérielles (cuisine en van).
 
-   ```bash
-   npx expo start
-   ```
+### Fonctionnalités principales
 
-In the output, you'll find options to open the app in a
+| Fonctionnalité         | Description                                                             |
+| ---------------------- | ----------------------------------------------------------------------- |
+| **Aujourd'hui**        | Objectif kcal du jour, activité détectée, déficit en temps réel         |
+| **Mon frigo**          | Scan code-barres, recherche par nom, saisie manuelle                    |
+| **Recettes IA**        | Génération selon tes aliments, tes macros et ton activité du jour       |
+| **Favoris & Planning** | Sauvegarde des recettes, organisation sur 7 jours, liste de courses     |
+| **Suivi**              | Courbe de poids, évolution masse grasse/musculaire, projection objectif |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Calcul nutritionnel
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+L'objectif calorique est dynamique : il démarre à **1 500 kcal/jour** (repos) et monte par paliers selon les calories brûlées récupérées depuis Strava — toujours en déficit, jamais en maintien.
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+Calories brûlées       Objectif du jour
+0    – 300 kcal    →   1 500 kcal
+300  – 600 kcal    →   1 650 kcal  (+150)
+600  – 1 000 kcal  →   1 800 kcal  (+300)
+1 000 – 1 500 kcal →   2 000 kcal  (+500)
+1 500+ kcal        →   2 200 kcal  (+700)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## Stack technique
 
-To learn more about developing your project with Expo, look at the following resources:
+### Application mobile
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Domaine            | Librairie                      |
+| ------------------ | ------------------------------ |
+| Framework          | React Native + Expo SDK 54     |
+| Navigation         | Expo Router + React Navigation |
+| State global       | Jotai                          |
+| Persistance locale | MMKV (`react-native-mmkv`)     |
+| Requêtes HTTP      | Axios + `axios-case-converter` |
+| Cache serveur      | TanStack Query (React Query)   |
+| Formulaires        | React Hook Form + Zod          |
+| Styles             | twrnc (Tailwind React Native)  |
+| Dates              | Day.js                         |
+| Debug              | Reactotron                     |
 
-## Join the community
+### Backend (Laravel)
 
-Join our community of developers creating universal apps.
+- Proxy API Anthropic (clé jamais exposée côté app)
+- OAuth2 Strava — récupération et calcul des calories brûlées
+- Base aliments : Ciqual (ANSES), Open Food Facts, Aprifel (scraping)
+- Calcul TDEE dynamique côté serveur
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Sources de données
+
+| Source              | Usage                                                           |
+| ------------------- | --------------------------------------------------------------- |
+| **Strava**          | Activités Garmin (Edge 1000, Forerunner 265) → calories brûlées |
+| **Renpho**          | Pesées → poids + composition corporelle → recalcul BMR          |
+| **Open Food Facts** | Produits avec code-barres                                       |
+| **Ciqual ANSES**    | Viandes, poissons, féculents, laitages                          |
+| **Aprifel**         | Fruits et légumes frais                                         |
+
+---
+
+## Architecture
+
+```
+App React Native (Expo)
+  │
+  ├── expo-camera          (scan code-barres)
+  ├── Jotai + MMKV         (state global persisté)
+  └── axios                (API Laravel)
+          │
+          ▼
+    Backend Laravel
+      ├── Proxy Anthropic API    (génération recettes IA)
+      ├── OAuth2 Strava          (activités physiques)
+      ├── Calcul TDEE            (BMR × coefficient + calories Strava)
+      └── Base aliments          (Ciqual + Aprifel + OFF + manuel)
+```
+
+### Pattern données : DTO → Mapper → Model
+
+Aucune donnée brute de l'API n'atteint l'interface. Le flux est toujours :
+
+```
+API → DTO → Mapper → Model → Composants / Hooks
+```
+
+---
+
+## Installation
+
+### Prérequis
+
+- Node.js 18+
+- Expo CLI
+- Android Studio (émulateur) ou appareil Android physique
+
+### Démarrage
+
+```bash
+# Installer les dépendances
+npm install
+
+# Lancer en développement
+npx expo start
+
+# Lancer directement sur Android
+npx expo start --android
+
+# Lancer directement sur iOS
+npx expo start --ios
+```
+
+---
+
+## Structure du projet
+
+```
+aliz/
+├── app/                    # Routes Expo Router
+├── assets/                 # Images, polices, icônes
+├── src/
+│   ├── api/
+│   │   ├── client.ts       # Instance Axios
+│   │   ├── dto/            # Interfaces des données brutes API
+│   │   ├── endpoints/      # Appels HTTP
+│   │   ├── hooks/          # Hooks React Query (wrappers réseau)
+│   │   └── mappers/        # DTO → Model
+│   ├── components/         # Composants génériques réutilisables
+│   ├── features/           # Composants métier
+│   ├── hooks/              # Hooks logique UI / métier
+│   ├── models/             # Types métier de l'app
+│   ├── navigation/
+│   ├── screens/            # Organisés par domaine
+│   ├── store/              # Atoms Jotai
+│   ├── styles/
+│   ├── types/
+│   └── utils/
+└── __tests__/              # Tests Jest + RNTL (miroir de src/)
+```
+
+---
+
+## Qualité & Outillage
+
+| Outil                    | Rôle                                          |
+| ------------------------ | --------------------------------------------- |
+| **Husky**                | Hooks Git automatiques                        |
+| **lint-staged**          | ESLint + Prettier sur les fichiers stagés     |
+| **Commitlint**           | Conventional Commits obligatoires             |
+| **validate-branch-name** | Nommage de branches strict                    |
+| **TypeScript strict**    | Pas de `any`, pas d'assertions non justifiées |
+| **Jest + RNTL**          | Tests unitaires et composants                 |
+
+### Hooks Git
+
+```
+pre-commit  →  tsc --noEmit + lint-staged
+pre-push    →  validate-branch-name + jest
+commit-msg  →  commitlint
+```
+
+### Convention de commits
+
+```
+feat: nouvelle fonctionnalité
+fix: correction de bug
+chore: config, dépendances, tooling
+refactor: refactorisation sans nouveau comportement
+test: ajout ou modification de tests
+docs: documentation
+```
+
+---
+
+## Roadmap MVP
+
+- [ ] **Phase 1** — Onboarding + calcul BMR/TDEE/macros/paliers
+- [ ] **Phase 2** — Frigo (scan + Ciqual + Aprifel + Open Food Facts)
+- [ ] **Phase 3** — Génération recettes IA + favoris + planning
+- [ ] **Phase 4** — Intégration Strava + ajustement calorique dynamique
+- [ ] **Phase 5** — Suivi poids + courbes + projection objectif
+- [ ] **Phase 6** — Publication Play Store (Android first)

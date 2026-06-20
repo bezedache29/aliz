@@ -1,0 +1,20 @@
+{
+  "skill_name": "aliz-test",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Je viens de créer les fichiers suivants pour l'API utilisateurs dans src/api/users/ :\n\n// user.dto.ts\nexport interface UserDto {\n  id: number;\n  first_name: string;\n  last_name: string;\n  email: string;\n  avatar_url?: string;\n}\n\n// user.model.ts\nexport interface UserModel {\n  id: number;\n  firstName: string;\n  lastName: string;\n  email: string;\n  avatarUrl?: string;\n}\n\n// user.mapper.ts\nimport type { UserDto } from './user.dto';\nimport type { UserModel } from './user.model';\n\nexport function mapUserDtoToModel(dto: UserDto): UserModel {\n  return {\n    id: dto.id,\n    firstName: dto.first_name,\n    lastName: dto.last_name,\n    email: dto.email,\n    avatarUrl: dto.avatar_url,\n  };\n}\n\nGénère les tests appropriés.",
+      "expected_output": "Un fichier __tests__/api/users/user.mapper.test.ts qui teste la transformation DTO→Model champ par champ, avec un cas nominal et un cas avec champ optionnel absent. Tests qui passent avec npx jest."
+    },
+    {
+      "id": 2,
+      "prompt": "J'ai créé ce hook dans src/hooks/use-profile.ts :\n\nimport { useQuery } from '@tanstack/react-query';\nimport axios from 'axios';\nimport type { UserModel } from '@/api/users/user.model';\n\nexport function useProfile(userId: number) {\n  return useQuery({\n    queryKey: ['profile', userId],\n    queryFn: async () => {\n      const { data } = await axios.get<UserModel>(`/users/${userId}`);\n      return data;\n    },\n  });\n}\n\nGénère les tests.",
+      "expected_output": "Un fichier __tests__/hooks/use-profile.test.ts qui teste le hook avec un QueryClientProvider wrapper, mock axios, un cas succès et un cas erreur. render/renderHook avec await."
+    },
+    {
+      "id": 3,
+      "prompt": "Voici le composant que je viens de créer dans src/components/avatar-button.tsx :\n\nimport { TouchableOpacity, Text, Image } from 'react-native';\n\ninterface Props {\n  name: string;\n  avatarUrl?: string;\n  onPress: () => void;\n}\n\nexport function AvatarButton({ name, avatarUrl, onPress }: Props) {\n  return (\n    <TouchableOpacity onPress={onPress}>\n      {avatarUrl && <Image source={{ uri: avatarUrl }} testID=\"avatar-image\" />}\n      <Text>{name}</Text>\n    </TouchableOpacity>\n  );\n}\n\nGénère les tests.",
+      "expected_output": "Un fichier __tests__/components/avatar-button.test.tsx qui teste : le rendu avec le nom, le press sur le bouton, la présence/absence de l'image selon avatarUrl. Avec await render."
+    }
+  ]
+}

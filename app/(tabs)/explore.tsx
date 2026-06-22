@@ -1,13 +1,14 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Image } from 'expo-image'
+import { Link } from 'expo-router'
+import { Platform, Pressable, StyleSheet } from 'react-native'
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { Collapsible } from '@/components/ui/collapsible'
+import { ExternalLink } from '@/components/external-link'
+import ParallaxScrollView from '@/components/parallax-scroll-view'
+import { ThemedText } from '@/components/themed-text'
+import { ThemedView } from '@/components/themed-view'
+import { IconSymbol } from '@/components/ui/icon-symbol'
+import { Fonts } from '@/constants/theme'
 
 export default function TabTwoScreen() {
   return (
@@ -20,16 +21,24 @@ export default function TabTwoScreen() {
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
         <ThemedText
           type="title"
           style={{
             fontFamily: Fonts.rounded,
-          }}>
+          }}
+        >
           Explore
         </ThemedText>
       </ThemedView>
+      <Link href="/design-system" asChild>
+        <Pressable style={styles.dsLink}>
+          <ThemedText type="defaultSemiBold">Design System →</ThemedText>
+          <ThemedText>Voir les composants et tokens visuels</ThemedText>
+        </Pressable>
+      </Link>
       <ThemedText>This app includes example code to help you get started.</ThemedText>
       <Collapsible title="File-based routing">
         <ThemedText>
@@ -95,7 +104,7 @@ export default function TabTwoScreen() {
         })}
       </Collapsible>
     </ParallaxScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -109,4 +118,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-});
+  dsLink: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#22C55E',
+    gap: 4,
+  },
+})

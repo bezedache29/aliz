@@ -206,6 +206,7 @@ aliz/
 │   │    └── <entity>/
 │   │         └── <entity>.model.ts
 │   ├── components/    # Composants génériques réutilisables (Button, Input, Avatar…)
+│   ├── layouts/       # Gabarits de page réutilisables (SafeAreaLayout, ScrollLayout…)
 │   ├── features/      # Composants métier non réutilisables ailleurs (ex: UserCard)
 │   ├── hooks/
 │   ├── navigation/

@@ -21,7 +21,7 @@ Ce document est la référence unique des règles à suivre dans le projet. Appl
 | Stockage local persisté | MMKV via `react-native-mmkv`                                        |
 | HTTP                    | Axios + `axios-case-converter` (snake_case ↔ camelCase automatique) |
 | Cache serveur           | React Query                                                         |
-| Navigation              | React Navigation                                                    |
+| Navigation              | Expo Router (file-based routing via `app/`)                         |
 | Formulaires             | React Hook Form + Zod                                               |
 | Styles                  | twrnc (Tailwind React Native Classnames)                            |
 | Dates                   | Day.js                                                              |
@@ -184,9 +184,31 @@ export async function fetchCurrentUser() {
 
 ## Structure de dossiers
 
+La navigation est gérée par **Expo Router** via le dossier `app/`. Les screens vivent dans `src/screens/` et sont importés par les fichiers `app/`.
+
+> **Règle absolue** : `app/` ne contient que deux types de fichiers :
+>
+> - `_layout.tsx` — déclaration de navigateurs (Stack, Tabs)
+> - thin wrappers one-liner (`export { default } from '@/src/screens/...'`) pour les routes tabs et onboarding
+>
+> **Jamais** de composant, de JSX, de logique, ni de screen utilitaire directement dans `app/`. Un composant modal va dans `src/components/`, un screen de debug va dans `src/screens/` et s'importe là où c'est nécessaire — aucun des deux ne crée un fichier dans `app/`.
+
 ```
 aliz/
 ├── assets/
+├── app/                          # Expo Router — routes file-based
+│   ├── _layout.tsx               # Root layout (Stack, ThemeProvider…)
+│   ├── (tabs)/
+│   │    ├── _layout.tsx          # Tab layout (Tabs, icônes…)
+│   │    ├── index.tsx            # Onglet "Aujourd'hui"
+│   │    ├── fridge.tsx
+│   │    ├── recipes.tsx
+│   │    ├── planning.tsx
+│   │    ├── tracking.tsx
+│   │    └── settings.tsx
+│   ├── onboarding/
+│   │    ├── _layout.tsx
+│   │    └── *.tsx                # Thin wrappers → src/screens/onboarding/
 ├── src/
 │   ├── api/
 │   │    ├── client.ts                          # Instance Axios configurée
@@ -206,11 +228,11 @@ aliz/
 │   │    └── <entity>/
 │   │         └── <entity>.model.ts
 │   ├── components/    # Composants génériques réutilisables (Button, Input, Avatar…)
-│   ├── layouts/       # Gabarits de page réutilisables (SafeAreaLayout, ScrollLayout…)
+│   ├── layouts/       # Wrappers visuels réutilisables (SafeAreaLayout, KeyboardLayout…)
+│   │                  # ≠ _layout.tsx Expo Router — ici c'est du visuel, pas de la navigation
 │   ├── features/      # Composants métier non réutilisables ailleurs (ex: UserCard)
 │   ├── hooks/
-│   ├── navigation/
-│   ├── screens/       # Organisés par domaine
+│   ├── screens/       # Organisés par domaine — importés par app/
 │   │    └── <domaine>/
 │   │         ├── <Domaine>ListScreen.tsx       # Liste → PascalCase, suffixe "List" + "Screen"
 │   │         ├── <Domaine>DetailScreen.tsx     # Détail → PascalCase, suffixe "Detail" + "Screen"
@@ -220,10 +242,41 @@ aliz/
 │   │    ├── atomWithMMKV.ts                    # Wrapper Jotai + MMKV
 │   │    └── <feature>Atom.ts                   # Ex: authAtom.ts, userPrefsAtom.ts
 │   ├── styles/
-│   ├── types/
+│   ├── types/         # Types utilitaires GÉNÉRIQUES uniquement — DeepPartial<T>, Nullable<T>…
+│   │                  # ❌ Jamais d'entités métier ici (UserProfile, Recipe…) → src/models/
 │   └── utils/
-├── App.js
 └── .env
+```
+
+### Relation app/ ↔ src/screens/
+
+Les fichiers dans `app/` sont des **thin wrappers** : ils ne contiennent quasiment aucune logique. Ils importent et rendent le screen correspondant de `src/screens/`.
+
+```tsx
+// app/(tabs)/fridge.tsx
+import FridgeScreen from '@/src/screens/fridge/FridgeScreen'
+export default FridgeScreen
+```
+
+Toute la logique, le JSX, les hooks → dans `src/screens/`. Le fichier `app/` ne fait que connecter la route au screen.
+
+### Navigation Expo Router
+
+```tsx
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import { Link } from 'expo-router'
+
+// Naviguer impérativement
+const router = useRouter()
+router.push('/onboarding')
+router.replace('/(tabs)')
+router.back()
+
+// Lire les paramètres de route
+const { id } = useLocalSearchParams()
+
+// Lien déclaratif
+<Link href="/recipes">Voir les recettes</Link>
 ```
 
 ### Nommage des screens
@@ -258,15 +311,21 @@ import { UserDTO } from '../../api/dto/user/user.dto'
 
 ## Anti-patterns — à ne jamais faire
 
-| À éviter                                     | À faire                                       |
-| -------------------------------------------- | --------------------------------------------- |
-| `fetch()` natif                              | `axios` via `src/api/client.ts`               |
-| DTO dans un screen/composant/hook            | Toujours passer par le mapper                 |
-| `useState` pour state global                 | `atom()` de Jotai                             |
-| `atom()` pour état persisté                  | `atomWithMMKV()`                              |
-| `AsyncStorage`                               | MMKV via `atomWithMMKV`                       |
-| `moment.js`                                  | `Day.js`                                      |
-| Imports relatifs remontants (`../`)          | Toujours `@/`                                 |
-| Screen hors de son dossier domaine           | Placer dans `screens/<domaine>/`              |
-| Screen sans suffixe `List`/`Detail`/`Screen` | Respecter les suffixes                        |
-| Screen en camelCase (`mealListScreen.tsx`)   | PascalCase obligatoire (`MealListScreen.tsx`) |
+| À éviter                                     | À faire                                                       |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| `fetch()` natif                              | `axios` via `src/api/client.ts`                               |
+| DTO dans un screen/composant/hook            | Toujours passer par le mapper                                 |
+| `useState` pour state global                 | `atom()` de Jotai                                             |
+| `atom()` pour état persisté                  | `atomWithMMKV()`                                              |
+| `AsyncStorage`                               | MMKV via `atomWithMMKV`                                       |
+| `moment.js`                                  | `Day.js`                                                      |
+| `useNavigation()` React Navigation           | `useRouter()` Expo Router                                     |
+| `navigation.navigate('Screen')`              | `router.push('/path')`                                        |
+| JSX ou logique dans `app/*.tsx`              | `app/` = `_layout.tsx` ou one-liner re-export uniquement      |
+| Composant dans `app/` (ex: modal)            | Créer dans `src/components/`, importer là où c'est nécessaire |
+| Screen utilitaire dans `app/` (ex: debug)    | Créer dans `src/screens/`, importer là où c'est nécessaire    |
+| Imports relatifs remontants (`../`)          | Toujours `@/`                                                 |
+| Screen hors de son dossier domaine           | Placer dans `screens/<domaine>/`                              |
+| Screen sans suffixe `List`/`Detail`/`Screen` | Respecter les suffixes                                        |
+| Screen en camelCase (`mealListScreen.tsx`)   | PascalCase obligatoire (`MealListScreen.tsx`)                 |
+| Interface métier dans `src/types/`           | `src/models/<entity>/<entity>.model.ts`                       |

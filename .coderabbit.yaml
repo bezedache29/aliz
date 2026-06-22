@@ -1,0 +1,86 @@
+language: "fr-FR"
+
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+
+  path_filters:
+    - "!package-lock.json"
+    - "!yarn.lock"
+    - "!assets/**"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.jpeg"
+    - "!**/*.gif"
+    - "!**/*.svg"
+    - "!**/*.ttf"
+    - "!**/*.otf"
+
+  path_instructions:
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        - TypeScript strict : interdit tout usage de `any`, d'assertions `as` non justifiées et de `// @ts-ignore`.
+        - Imports : tous les imports doivent utiliser l'alias `@/`. Les chemins relatifs remontants (`../`) sont interdits.
+        - State global : utiliser `atom()` de Jotai. Ne jamais utiliser `useState` pour du state global.
+        - State persisté : utiliser `atomWithMMKV()` défini dans `src/store/atomWithMMKV.ts`. Ne jamais utiliser AsyncStorage directement.
+        - Aucune donnée brute de l'API (DTO) ne doit atteindre un screen, composant ou hook. Le flux obligatoire est : API → DTO → Mapper → Model → App.
+        - HTTP : toujours passer par l'instance Axios configurée dans `src/api/client.ts`. Ne jamais utiliser `fetch()` natif.
+        - Dates : utiliser Day.js. Interdire moment.js.
+        - Styles : utiliser twrnc (Tailwind React Native Classnames). Éviter les `StyleSheet.create` pour les styles dynamiques.
+
+    - path: "src/api/dto/**"
+      instructions: |
+        - Un DTO représente exactement ce que l'API renvoie.
+        - Grâce à `axios-case-converter`, les clés arrivent en camelCase côté client : le DTO doit donc utiliser le camelCase.
+        - Pas de logique métier dans un DTO — uniquement des types de données brutes.
+        - Nommage : `<Entity>DTO` (ex: `UserDTO`).
+
+    - path: "src/api/mappers/**"
+      instructions: |
+        - Un mapper convertit un DTO en Model. Pas de logique autre que la transformation.
+        - Nommage obligatoire de la fonction : `<entity>DTOto<Entity>Model` (ex: `userDTOtoUserModel`).
+        - Ne jamais laisser passer un champ DTO brut dans le Model sans transformation explicite.
+
+    - path: "src/models/**"
+      instructions: |
+        - Un Model est le seul type utilisé dans l'app (screens, composants, hooks, atoms).
+        - Les dates doivent être typées `Dayjs`, jamais `string`.
+        - Pas de champs optionnels sauf s'ils sont réellement optionnels côté métier.
+
+    - path: "src/store/**"
+      instructions: |
+        - Atoms non persistés : `atom()` de Jotai.
+        - Atoms persistés entre sessions : `atomWithMMKV()` depuis `src/store/atomWithMMKV.ts`.
+        - Nommage du fichier : `<feature>Atom.ts` (ex: `authAtom.ts`).
+        - Ne pas exporter d'atoms depuis un fichier qui n'est pas dans `src/store/`.
+
+    - path: "src/screens/**"
+      instructions: |
+        - Nommage PascalCase obligatoire avec suffixe selon le rôle :
+          - Liste → `<Domaine>ListScreen.tsx`
+          - Détail → `<Domaine>DetailScreen.tsx`
+          - Générique → `<Domaine>Screen.tsx`
+        - Un screen ne doit jamais recevoir de DTO directement.
+        - Pas de logique métier dans un screen : déléguer aux hooks ou au store.
+
+    - path: "components/**"
+      instructions: |
+        - `components/` contient uniquement des composants génériques réutilisables (Button, Input, Avatar…).
+        - Les composants métier non réutilisables vont dans `src/features/`.
+        - Les gabarits de page (SafeAreaLayout, ScrollLayout…) vont dans `src/layouts/`.
+        - Un composant ne doit jamais appeler directement l'API — passer par un hook dans `src/api/hooks/`.
+
+    - path: ".claude/skills/**"
+      instructions: |
+        - Ces fichiers définissent le comportement de l'agent IA sur ce projet. Ne pas suggérer de simplification ou de suppression de contenu.
+
+chat:
+  auto_reply: true

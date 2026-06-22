@@ -1,3 +1,4 @@
+import '@/src/config/dayjs'
 import '@/src/config/reactotron'
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'

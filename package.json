@@ -84,7 +84,8 @@
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|react-native-svg|twrnc|@tanstack/.*|react-native-reanimated|react-native-gesture-handler|react-native-safe-area-context|react-native-screens|react-native-calendars|react-native-worklets|react-native-nitro-modules)"
     ],
     "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/$1"
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@expo/vector-icons/(.*)$": "<rootDir>/__mocks__/@expo/vector-icons/$1"
     }
   },
   "lint-staged": {

@@ -26,6 +26,9 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Reactotron
+.reactotron/
+
 # macOS
 .DS_Store
 *.pem

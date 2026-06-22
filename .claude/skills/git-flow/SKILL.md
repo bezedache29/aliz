@@ -48,7 +48,15 @@ Exemples : `feat: mise en place de la connexion`, `chore: installation des dépe
 Exécute `git status` et `git diff --stat` pour comprendre ce qui a changé.
 Déduis le type (feature, fix, chore…) et le sujet principal du travail effectué.
 
-### 2. Proposer la branche et le commit
+### 2. Security review
+
+Lance le skill `security-review` sur les fichiers modifiés avant toute autre étape.
+
+- Si des vulnérabilités **Critical** ou **High** sont détectées → signaler à l'utilisateur et stopper le workflow. Ne pas committer tant qu'elles ne sont pas corrigées.
+- Si des points **Medium** ou **Needs verification** sont détectés → les présenter à l'utilisateur et lui demander s'il veut continuer malgré tout.
+- Si aucune vulnérabilité → continuer directement à l'étape 3.
+
+### 3. Proposer la branche et le commit
 
 Propose les deux en une seule fois :
 
@@ -59,10 +67,10 @@ Propose les deux en une seule fois :
 >
 > Tu valides ou tu veux changer quelque chose ?"
 
-Si l'utilisateur valide → passer à l'étape 3.
+Si l'utilisateur valide → passer à l'étape 4.
 Si l'utilisateur donne son propre nom/message → utiliser exactement ce qu'il a fourni.
 
-### 3. Exécuter
+### 4. Exécuter
 
 Une fois validé, enchaîner sans confirmation supplémentaire :
 

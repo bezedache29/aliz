@@ -2,13 +2,17 @@ import '@/src/config/dayjs'
 import '@/src/config/reactotron'
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
+import * as ExpoSplash from 'expo-splash-screen'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
+import SplashScreen from '@/src/screens/splash/SplashScreen'
+
+ExpoSplash.preventAutoHideAsync()
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null }
@@ -51,6 +55,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
+  const [showSplash, setShowSplash] = useState(true)
 
   return (
     <ErrorBoundary>
@@ -60,6 +65,12 @@ export default function RootLayout() {
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
+        {showSplash && (
+          <SplashScreen
+            onReady={() => ExpoSplash.hideAsync()}
+            onFinish={() => setShowSplash(false)}
+          />
+        )}
       </ThemeProvider>
     </ErrorBoundary>
   )

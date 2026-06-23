@@ -32,21 +32,22 @@ reviews:
         - State global : utiliser `atom()` de Jotai. Ne jamais utiliser `useState` pour du state global.
         - State persisté : utiliser `atomWithMMKV()` défini dans `src/store/atomWithMMKV.ts`. Ne jamais utiliser AsyncStorage directement.
         - Aucune donnée brute de l'API (DTO) ne doit atteindre un screen, composant ou hook. Le flux obligatoire est : API → DTO → Mapper → Model → App.
-        - HTTP : toujours passer par l'instance Axios configurée dans `src/api/client.ts`. Ne jamais utiliser `fetch()` natif.
+        - HTTP : toujours passer par l'instance Axios du client dédié à l'API concernée dans `src/apis/<nomApi>/client.ts`. Ne jamais utiliser `fetch()` natif.
         - Dates : utiliser Day.js. Interdire moment.js.
         - Styles : utiliser twrnc (Tailwind React Native Classnames). Éviter les `StyleSheet.create` pour les styles dynamiques.
 
-    - path: "src/api/dto/**"
+    - path: "src/apis/**/dto/**"
       instructions: |
         - Un DTO représente exactement ce que l'API renvoie.
-        - Grâce à `axios-case-converter`, les clés arrivent en camelCase côté client : le DTO doit donc utiliser le camelCase.
+        - Pour le backendApi, `axios-case-converter` convertit les clés en camelCase : le DTO utilise donc le camelCase.
+        - Pour les APIs tierces (OpenFoodFacts, CIQUAL…), les clés restent telles quelles (snake_case ou autre).
         - Pas de logique métier dans un DTO — uniquement des types de données brutes.
         - Nommage : `<Entity>DTO` (ex: `UserDTO`).
 
-    - path: "src/api/mappers/**"
+    - path: "src/apis/**/mappers/**"
       instructions: |
         - Un mapper convertit un DTO en Model. Pas de logique autre que la transformation.
-        - Nommage obligatoire de la fonction : `<entity>DTOto<Entity>Model` (ex: `userDTOtoUserModel`).
+        - Nommage obligatoire de la fonction : `<source>DTOto<Entity>` (ex: `openFoodFactsDTOtoFoodProduct`).
         - Ne jamais laisser passer un champ DTO brut dans le Model sans transformation explicite.
 
     - path: "src/models/**"

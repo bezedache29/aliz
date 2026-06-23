@@ -1,6 +1,8 @@
 import '@/src/config/dayjs'
 import '@/src/config/reactotron'
 
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import * as ExpoSplash from 'expo-splash-screen'
 import { Stack, useRouter } from 'expo-router'
@@ -8,11 +10,21 @@ import { StatusBar } from 'expo-status-bar'
 import { useAtomValue } from 'jotai'
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import SplashScreen from '@/src/screens/splash/SplashScreen'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+})
 
 ExpoSplash.preventAutoHideAsync()
 
@@ -62,25 +74,32 @@ export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true)
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
-        {showSplash && (
-          <SplashScreen
-            onReady={() => {
-              ExpoSplash.hideAsync()
-              if (!onboarding.completed) {
-                router.replace('/onboarding')
-              }
-            }}
-            onFinish={() => setShowSplash(false)}
-          />
-        )}
-      </ThemeProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <BottomSheetModalProvider>
+              <Stack>
+                <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="food-search" options={{ headerShown: false }} />
+              </Stack>
+              <StatusBar style="auto" />
+              {showSplash && (
+                <SplashScreen
+                  onReady={() => {
+                    ExpoSplash.hideAsync()
+                    if (!onboarding.completed) {
+                      router.replace('/onboarding')
+                    }
+                  }}
+                  onFinish={() => setShowSplash(false)}
+                />
+              )}
+            </BottomSheetModalProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   )
 }

@@ -28,15 +28,23 @@ Aliz calcule ton objectif calorique quotidien en croisant ton profil (BMR/TDEE),
 
 ### Calcul nutritionnel
 
-L'objectif calorique est dynamique : il démarre à **1 500 kcal/jour** (repos) et monte par paliers selon les calories brûlées récupérées depuis Strava — toujours en déficit, jamais en maintien.
+L'objectif calorique de base est calculé à partir du TDEE avec un déficit fixe choisi lors de l'onboarding — toujours en déficit, jamais en maintien. Plancher à 1 500 kcal/jour.
 
 ```
-Calories brûlées       Objectif du jour
-0    – 300 kcal    →   1 500 kcal
-300  – 600 kcal    →   1 650 kcal  (+150)
-600  – 1 000 kcal  →   1 800 kcal  (+300)
-1 000 – 1 500 kcal →   2 000 kcal  (+500)
-1 500+ kcal        →   2 200 kcal  (+700)
+Rythme choisi       Déficit/jour     Objectif de base
+0,5 kg / semaine →  - 500 kcal   →  max(1 500, TDEE - 500)
+1 kg / semaine   →  - 1 000 kcal →  max(1 500, TDEE - 1 000)
+```
+
+L'objectif est ensuite ajusté dynamiquement selon les calories brûlées récupérées depuis Strava (Phase 4) — toujours en déficit.
+
+```
+Calories brûlées       Objectif ajusté
+0    – 300 kcal    →   max(1 500, base)
+300  – 600 kcal    →   max(1 500, base + 150 kcal)
+600  – 1 000 kcal  →   max(1 500, base + 300 kcal)
+1 000 – 1 500 kcal →   max(1 500, base + 500 kcal)
+1 500+ kcal        →   max(1 500, base + 700 kcal)
 ```
 
 ---
@@ -192,7 +200,7 @@ docs: documentation
 
 ## Roadmap MVP
 
-- [ ] **Phase 1** — Onboarding + calcul BMR/TDEE/macros/paliers
+- [x] **Phase 1** — Onboarding + calcul BMR/TDEE/macros (déficit 500/1 000 kcal selon rythme choisi)
 - [ ] **Phase 2** — Frigo (scan + Ciqual + Aprifel + Open Food Facts)
 - [ ] **Phase 3** — Génération recettes IA + favoris + planning
 - [ ] **Phase 4** — Intégration Strava + ajustement calorique dynamique

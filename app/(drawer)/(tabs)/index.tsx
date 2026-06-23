@@ -1,1 +1,1 @@
-export { default } from '@/src/screens/design-system/DesignSystemScreen'
+export { default } from '@/src/screens/journal/JournalScreen'

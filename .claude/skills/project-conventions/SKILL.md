@@ -104,6 +104,41 @@ Ne jamais utiliser AsyncStorage. Ne jamais utiliser `useState` pour du state glo
 
 ---
 
+## Day.js — configuration et usage
+
+Day.js est configuré une seule fois dans `src/config/dayjs.ts` avec la locale française et le plugin `isoWeek` :
+
+```ts
+// src/config/dayjs.ts
+import dayjs from 'dayjs'
+import 'dayjs/locale/fr'
+import isoWeek from 'dayjs/plugin/isoWeek'
+
+dayjs.extend(isoWeek)
+dayjs.locale('fr')
+
+export default dayjs
+```
+
+Ce fichier est importé en premier dans `app/_layout.tsx` (`import '@/src/config/dayjs'`) pour garantir la configuration avant tout rendu.
+
+**Règle d'import** : toujours importer `dayjs` depuis `@/src/config/dayjs`, jamais depuis `'dayjs'` directement. Le type `Dayjs` s'importe lui depuis `'dayjs'` car c'est un type, pas une valeur.
+
+```ts
+// ✅ Correct
+import dayjs from '@/src/config/dayjs'
+import { Dayjs } from 'dayjs'
+
+// ❌ Interdit — locale et plugins non garantis
+import dayjs from 'dayjs'
+```
+
+Plugins activés :
+
+- `isoWeek` — semaines ISO (lundi = jour 1) : `dayjs().startOf('isoWeek')`, `dayjs().isoWeek()`
+
+---
+
 ## Pattern API — DTO → Mapper → Model
 
 **Règle absolue** : aucune donnée brute de l'API ne doit atteindre un screen, composant ou hook directement. Le flux est toujours :
@@ -319,6 +354,7 @@ import { UserDTO } from '../../api/dto/user/user.dto'
 | `atom()` pour état persisté                  | `atomWithMMKV()`                                              |
 | `AsyncStorage`                               | MMKV via `atomWithMMKV`                                       |
 | `moment.js`                                  | `Day.js`                                                      |
+| `import dayjs from 'dayjs'`                  | `import dayjs from '@/src/config/dayjs'`                      |
 | `useNavigation()` React Navigation           | `useRouter()` Expo Router                                     |
 | `navigation.navigate('Screen')`              | `router.push('/path')`                                        |
 | JSX ou logique dans `app/*.tsx`              | `app/` = `_layout.tsx` ou one-liner re-export uniquement      |

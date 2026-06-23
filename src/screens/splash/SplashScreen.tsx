@@ -11,10 +11,11 @@ import tw from 'twrnc'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 
-const { height: SCREEN_H } = Dimensions.get('window')
-const LOGO_H = SCREEN_H * 0.6
-const LOGO_W = LOGO_H * (677 / 369)
-const LOGO_SHIFT_UP = 0
+const { width: SCREEN_W } = Dimensions.get('window')
+const LOGO_W = SCREEN_W * 1.5
+const LOGO_H = LOGO_W * (752 / 1380)
+const LOGO_SHIFT_UP = 40
+const LOGO_OFFSET_X = -8
 
 interface Props {
   onReady: () => void
@@ -41,7 +42,11 @@ export default function SplashScreen({ onReady, onFinish }: Props) {
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: logoOpacity.value,
-    transform: [{ scale: logoScale.value }, { translateY: -LOGO_SHIFT_UP }],
+    transform: [
+      { scale: logoScale.value },
+      { translateY: -LOGO_SHIFT_UP },
+      { translateX: LOGO_OFFSET_X },
+    ],
   }))
 
   const containerStyle = useAnimatedStyle(() => ({
@@ -60,8 +65,8 @@ export default function SplashScreen({ onReady, onFinish }: Props) {
       ]}
     >
       <Animated.Image
-        source={require('@/assets/logo.png')}
-        style={[{ width: LOGO_W, height: LOGO_H }, logoStyle]}
+        source={require('@/assets/splash.png')}
+        style={[{ width: LOGO_W, height: LOGO_H, alignSelf: 'center' }, logoStyle]}
         resizeMode="stretch"
       />
     </Animated.View>

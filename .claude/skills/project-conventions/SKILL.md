@@ -4,7 +4,7 @@ description: >
   Conventions du projet React Native "aliz" : stack technique, patterns obligatoires
   (API DTO→Mapper→Model, Jotai+MMKV), structure de dossiers et anti-patterns à éviter.
   Utilise cette skill dès qu'on crée ou modifie un fichier dans le projet aliz — composant,
-  screen, hook, atom, endpoint, mapper, modèle — ou dès qu'une question touche à la gestion
+  screen, hook, atom, mapper, modèle — ou dès qu'une question touche à la gestion
   d'état, au stockage, aux appels API, aux formulaires, à la navigation ou au nommage de fichiers.
   Ne pas attendre que l'utilisateur mentionne explicitement "conventions" pour déclencher la skill.
 ---
@@ -15,18 +15,18 @@ Ce document est la référence unique des règles à suivre dans le projet. Appl
 
 ## Stack technique
 
-| Domaine                 | Librairie                                                           |
-| ----------------------- | ------------------------------------------------------------------- |
-| State global            | Jotai (atoms dans `src/store/`)                                     |
-| Stockage local persisté | MMKV via `react-native-mmkv`                                        |
-| HTTP                    | Axios + `axios-case-converter` (snake_case ↔ camelCase automatique) |
-| Cache serveur           | React Query                                                         |
-| Navigation              | Expo Router (file-based routing via `app/`)                         |
-| Formulaires             | React Hook Form + Zod                                               |
-| Styles                  | twrnc (Tailwind React Native Classnames)                            |
-| Dates                   | Day.js                                                              |
-| Debug                   | Reactotron                                                          |
-| Orientation             | Portrait uniquement (bloqué)                                        |
+| Domaine                 | Librairie                                                                |
+| ----------------------- | ------------------------------------------------------------------------ |
+| State global            | Jotai (atoms dans `src/store/`)                                          |
+| Stockage local persisté | MMKV via `react-native-mmkv`                                             |
+| HTTP                    | Axios (une instance par API externe)                                     |
+| Cache serveur           | React Query (`@tanstack/react-query`) — `QueryClient` dans `_layout.tsx` |
+| Navigation              | Expo Router (file-based routing via `app/`)                              |
+| Formulaires             | React Hook Form + Zod                                                    |
+| Styles                  | twrnc (Tailwind React Native Classnames)                                 |
+| Dates                   | Day.js                                                                   |
+| Debug                   | Reactotron                                                               |
+| Orientation             | Portrait uniquement (bloqué)                                             |
 
 ## Outillage Git
 
@@ -139,79 +139,156 @@ Plugins activés :
 
 ---
 
-## Pattern API — DTO → Mapper → Model
+## Pattern API — un dossier par service
 
-**Règle absolue** : aucune donnée brute de l'API ne doit atteindre un screen, composant ou hook directement. Le flux est toujours :
+**Règle absolue** : chaque API externe ou backend dispose de son propre dossier racine dans `src/`. Pas de dossier `src/api/` générique.
+
+Tous les dossiers API sont regroupés sous `src/apis/` :
+
+| API             | Dossier                      | Client Axios                                  |
+| --------------- | ---------------------------- | --------------------------------------------- |
+| Notre backend   | `src/apis/backendApi/`       | `backendClient` (avec `axios-case-converter`) |
+| OpenFoodFacts   | `src/apis/openFoodFactsApi/` | `offClient` (sans middleware)                 |
+| CIQUAL (futur)  | `src/apis/ciqualApi/`        | à créer                                       |
+| APRIFEL (futur) | `src/apis/aprifelApi/`       | à créer                                       |
+
+Chaque dossier API suit la même structure interne :
 
 ```
-API externe → DTO → Mapper → Model → App
+src/apis/<nomApi>/
+├── client.ts              # Instance Axios dédiée à cette API
+├── dto/
+│   └── <entity>/
+│        └── <entity>.dto.ts
+├── mappers/
+│   └── <entity>/
+│        └── <entity>.mapper.ts
+└── hooks/
+    └── <entity>/
+         └── use<Entity>.ts   # Hook React Query qui appelle l'API
 ```
 
-Ce pattern isole l'app des changements d'API : si le backend change, seul le mapper change.
-
-### 1. DTO — `src/api/dto/<entity>/<entity>.dto.ts`
-
-Représente exactement ce que l'API renvoie. Grâce à `axios-case-converter`, les clés sont déjà converties en camelCase à la réception, donc les DTOs utilisent le camelCase.
+**Import Axios** : toujours utiliser le named export `{ create }` plutôt que le default :
 
 ```ts
-// src/api/dto/user/user.dto.ts
+// ✅ Correct
+import { create } from 'axios'
+export const offClient = create({ baseURL: '...' })
+
+// ❌ Warning ESLint
+import axios from 'axios'
+export const offClient = axios.create({ baseURL: '...' })
+```
+
+**Pas de dossier `endpoints/`** — on utilise `hooks/` à la place. Chaque fichier hook contient :
+
+1. La fonction `async` qui fait l'appel HTTP (fetcher)
+2. Le hook `useQuery` / `useMutation` qui l'expose au composant
+
+### Flux obligatoire
+
+```
+API externe → DTO → Mapper → Model → Hook React Query → Screen
+```
+
+Aucune donnée brute (DTO) ne doit atteindre un screen ou un composant.
+
+### 1. DTO — `src/<nomApi>/dto/<entity>/<entity>.dto.ts`
+
+Représente exactement ce que l'API renvoie. Pour le `backendApi`, `axios-case-converter` convertit automatiquement en camelCase, donc les DTOs sont en camelCase. Pour les APIs tierces (OpenFoodFacts, CIQUAL…), les clés restent telles quelles depuis l'API.
+
+```ts
+// src/apis/backendApi/dto/user/user.dto.ts
 export interface UserDTO {
   id: number
-  firstName: string
+  firstName: string // camelCase grâce à axios-case-converter
   lastName: string
   emailAddress: string
   createdAt: string
 }
+
+// src/apis/openFoodFactsApi/dto/food/food.dto.ts
+export interface OpenFoodFactsProductDTO {
+  code: string
+  product_name?: string // snake_case natif de l'API
+  nutriments?: {
+    'energy-kcal_100g'?: number
+    proteins_100g?: number
+  }
+}
 ```
 
-### 2. Mapper — `src/api/mappers/<entity>/<entity>.mapper.ts`
+### 2. Mapper — `src/<nomApi>/mappers/<entity>/<entity>.mapper.ts`
 
-Convertit un DTO en Model. Nommage obligatoire : `entityDTOtoEntityModel`.
+Convertit un DTO en Model. Nommage obligatoire : `sourceDTOtoEntityModel`.
 
 ```ts
-// src/api/mappers/user/user.mapper.ts
-import { UserDTO } from '@/api/dto/user/user.dto'
-import { User } from '@/models/user/user.model'
+// src/apis/openFoodFactsApi/mappers/food/food.mapper.ts
+import { OpenFoodFactsProductDTO } from '@/src/apis/openFoodFactsApi/dto/food/food.dto'
+import { FoodProduct } from '@/src/models/food/food.model'
 
-export function userDTOtoUserModel(dto: UserDTO): User {
-  return {
-    id: dto.id,
-    fullName: `${dto.firstName} ${dto.lastName}`,
-    email: dto.emailAddress,
-    createdAt: dayjs(dto.createdAt),
-  }
+export function openFoodFactsDTOtoFoodProduct(dto: OpenFoodFactsProductDTO): FoodProduct {
+  return { ... }
 }
 ```
 
 ### 3. Model — `src/models/<entity>/<entity>.model.ts`
 
-Le seul type utilisé dans l'app (screens, composants, hooks, atoms).
+Le seul type utilisé dans l'app (screens, composants, hooks, atoms). Indépendant de toute API.
 
 ```ts
-// src/models/user/user.model.ts
-import { Dayjs } from 'dayjs'
-
-export interface User {
-  id: number
-  fullName: string
-  email: string
-  createdAt: Dayjs
+// src/models/food/food.model.ts
+export interface FoodProduct {
+  id: string
+  name: string
+  source: 'openfoodfacts' | 'ciqual' | 'aprifel' | 'manual'
+  per100g: { kcal: number; proteines: number; glucides: number; lipides: number }
 }
 ```
 
-### 4. Endpoint — `src/api/endpoints/<entity>/<entity>.api.ts`
+### 4. Hook React Query — `src/<nomApi>/hooks/<entity>/use<Entity>.ts`
 
-Appelle l'API, reçoit le DTO, applique le mapper.
+Contient la fonction fetch (privée) et le hook `useQuery` (exporté).
 
 ```ts
-// src/api/endpoints/user/user.api.ts
-import { apiClient } from '@/api/client'
-import { UserDTO } from '@/api/dto/user/user.dto'
-import { userDTOtoUserModel } from '@/api/mappers/user/user.mapper'
+// src/apis/openFoodFactsApi/hooks/food/useFoodSearch.ts
+import { useQuery } from '@tanstack/react-query'
+import { offClient } from '@/src/apis/openFoodFactsApi/client'
+import { openFoodFactsDTOtoFoodProduct } from '@/src/apis/openFoodFactsApi/mappers/food/food.mapper'
 
-export async function fetchCurrentUser() {
-  const { data } = await apiClient.get<UserDTO>('/me')
-  return userDTOtoUserModel(data)
+async function fetchFoodSearch(query: string) {
+  const { data } = await offClient.get('/cgi/search.pl', { params: { ... } })
+  return data.products.map(openFoodFactsDTOtoFoodProduct)
+}
+
+export function useFoodSearch(query: string, enabled = true) {
+  return useQuery({
+    queryKey: ['openfoodfacts', 'food-search', query],
+    queryFn: () => fetchFoodSearch(query),
+    enabled: enabled && query.trim().length >= 2,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+```
+
+### React Query — configuration globale
+
+Le `QueryClient` est instancié une seule fois à la racine du module `app/_layout.tsx` (hors composant, pour ne pas être recréé à chaque render) :
+
+```tsx
+// app/_layout.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: 1 } },
+})
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView>
+      <QueryClientProvider client={queryClient}>...</QueryClientProvider>
+    </GestureHandlerRootView>
+  )
 }
 ```
 
@@ -224,107 +301,76 @@ La navigation est gérée par **Expo Router** via le dossier `app/`. Les screens
 > **Règle absolue** : `app/` ne contient que deux types de fichiers :
 >
 > - `_layout.tsx` — déclaration de navigateurs (Stack, Tabs)
-> - thin wrappers one-liner (`export { default } from '@/src/screens/...'`) pour les routes tabs et onboarding
+> - thin wrappers one-liner (`export { default } from '@/src/screens/...'`) pour les routes
 >
-> **Jamais** de composant, de JSX, de logique, ni de screen utilitaire directement dans `app/`. Un composant modal va dans `src/components/`, un screen de debug va dans `src/screens/` et s'importe là où c'est nécessaire — aucun des deux ne crée un fichier dans `app/`.
+> **Jamais** de composant, de JSX, de logique, ni de screen utilitaire directement dans `app/`. Un composant modal va dans `src/components/`, un screen de debug va dans `src/screens/` et s'importe là où c'est nécessaire.
 
 ```
 aliz/
 ├── assets/
 ├── app/                          # Expo Router — routes file-based
-│   ├── _layout.tsx               # Root layout (Stack, ThemeProvider…)
-│   ├── (tabs)/
-│   │    ├── _layout.tsx          # Tab layout (Tabs, icônes…)
-│   │    ├── index.tsx            # Onglet "Aujourd'hui"
-│   │    ├── fridge.tsx
-│   │    ├── recipes.tsx
-│   │    ├── planning.tsx
-│   │    ├── tracking.tsx
-│   │    └── settings.tsx
-│   ├── onboarding/
+│   ├── _layout.tsx               # Root layout (Stack, providers…)
+│   ├── food-search.tsx           # Thin wrapper → src/screens/journal/FoodSearchScreen
+│   ├── (drawer)/
 │   │    ├── _layout.tsx
-│   │    └── *.tsx                # Thin wrappers → src/screens/onboarding/
+│   │    └── (tabs)/
+│   │         ├── _layout.tsx
+│   │         └── index.tsx
+│   └── onboarding/
+│        └── *.tsx
 ├── src/
-│   ├── api/
-│   │    ├── client.ts                          # Instance Axios configurée
-│   │    ├── dto/
-│   │    │    └── <entity>/
-│   │    │         └── <entity>.dto.ts
-│   │    ├── endpoints/
-│   │    │    └── <entity>/
-│   │    │         └── <entity>.api.ts
-│   │    ├── hooks/
-│   │    │    └── <entity>/
-│   │    │         └── use<Entity>.ts
-│   │    └── mappers/
-│   │         └── <entity>/
-│   │              └── <entity>.mapper.ts
+│   ├── apis/                     # Toutes les intégrations API regroupées ici
+│   │    ├── backendApi/          # Notre backend REST
+│   │    │    ├── client.ts       # backendClient (axios + axios-case-converter)
+│   │    │    ├── dto/<entity>/
+│   │    │    ├── mappers/<entity>/
+│   │    │    └── hooks/<entity>/
+│   │    ├── openFoodFactsApi/    # API OpenFoodFacts
+│   │    │    ├── client.ts       # offClient (axios nu, pas de middleware)
+│   │    │    ├── dto/<entity>/
+│   │    │    ├── mappers/<entity>/
+│   │    │    └── hooks/<entity>/
+│   │    └── <nomApi>/            # Même structure pour chaque API externe
 │   ├── models/
 │   │    └── <entity>/
 │   │         └── <entity>.model.ts
-│   ├── components/    # Composants génériques réutilisables (Button, Input, Avatar…)
-│   ├── layouts/       # Wrappers visuels réutilisables (SafeAreaLayout, KeyboardLayout…)
-│   │                  # ≠ _layout.tsx Expo Router — ici c'est du visuel, pas de la navigation
-│   ├── features/      # Composants métier non réutilisables ailleurs (ex: UserCard)
-│   ├── hooks/
+│   ├── components/    # Composants génériques réutilisables (Button, Input…)
+│   ├── features/      # Composants métier non réutilisables ailleurs
+│   ├── hooks/         # Hooks génériques (useColors, useColorScheme…)
 │   ├── screens/       # Organisés par domaine — importés par app/
 │   │    └── <domaine>/
-│   │         ├── <Domaine>ListScreen.tsx       # Liste → PascalCase, suffixe "List" + "Screen"
-│   │         ├── <Domaine>DetailScreen.tsx     # Détail → PascalCase, suffixe "Detail" + "Screen"
-│   │         └── <Domaine>Screen.tsx           # Screen générique → PascalCase, suffixe "Screen"
-│   ├── services/
+│   │         ├── <Domaine>ListScreen.tsx
+│   │         ├── <Domaine>DetailScreen.tsx
+│   │         └── <Domaine>Screen.tsx
 │   ├── store/
-│   │    ├── atomWithMMKV.ts                    # Wrapper Jotai + MMKV
-│   │    └── <feature>Atom.ts                   # Ex: authAtom.ts, userPrefsAtom.ts
+│   │    ├── atomWithMMKV.ts
+│   │    └── <feature>Atom.ts
 │   ├── styles/
-│   ├── types/         # Types utilitaires GÉNÉRIQUES uniquement — DeepPartial<T>, Nullable<T>…
-│   │                  # ❌ Jamais d'entités métier ici (UserProfile, Recipe…) → src/models/
+│   ├── types/         # Types utilitaires GÉNÉRIQUES uniquement
 │   └── utils/
 └── .env
 ```
-
-### Relation app/ ↔ src/screens/
-
-Les fichiers dans `app/` sont des **thin wrappers** : ils ne contiennent quasiment aucune logique. Ils importent et rendent le screen correspondant de `src/screens/`.
-
-```tsx
-// app/(tabs)/fridge.tsx
-import FridgeScreen from '@/src/screens/fridge/FridgeScreen'
-export default FridgeScreen
-```
-
-Toute la logique, le JSX, les hooks → dans `src/screens/`. Le fichier `app/` ne fait que connecter la route au screen.
 
 ### Navigation Expo Router
 
 ```tsx
 import { useRouter, useLocalSearchParams } from 'expo-router'
-import { Link } from 'expo-router'
 
-// Naviguer impérativement
 const router = useRouter()
-router.push('/onboarding')
+router.push('/food-search?mealType=Déjeuner')
 router.replace('/(tabs)')
 router.back()
 
-// Lire les paramètres de route
-const { id } = useLocalSearchParams()
-
-// Lien déclaratif
-<Link href="/recipes">Voir les recettes</Link>
+const { mealType } = useLocalSearchParams<{ mealType: string }>()
 ```
 
 ### Nommage des screens
-
-Les screens sont en **PascalCase** et suivent un suffixe strict selon leur rôle :
 
 | Rôle             | Suffixe        | Exemple                   |
 | ---------------- | -------------- | ------------------------- |
 | Liste d'items    | `ListScreen`   | `AlimentListScreen.tsx`   |
 | Détail d'un item | `DetailScreen` | `AlimentDetailScreen.tsx` |
-| Screen générique | `Screen`       | `ProfileScreen.tsx`       |
-
-Un screen sans son suffixe, sans PascalCase, ou hors de son dossier de domaine est une erreur.
+| Screen générique | `Screen`       | `FoodSearchScreen.tsx`    |
 
 ---
 
@@ -334,34 +380,33 @@ Tous les imports utilisent l'alias `@/`. Les chemins relatifs remontants (`../`)
 
 ```ts
 // ✅ Correct
-import { atomWithMMKV } from '@/src/store/atomWithMMKV'
-import { UserDTO } from '@/src/api/dto/user/user.dto'
+import { backendClient } from '@/src/apis/backendApi/client'
+import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
+import { FoodProduct } from '@/src/models/food/food.model'
 
 // ❌ Interdit
-import { atomWithMMKV } from '../store/atomWithMMKV'
-import { UserDTO } from '../../api/dto/user/user.dto'
+import { useFoodSearch } from '../../../apis/openFoodFactsApi/hooks/food/useFoodSearch'
 ```
 
 ---
 
 ## Anti-patterns — à ne jamais faire
 
-| À éviter                                     | À faire                                                       |
-| -------------------------------------------- | ------------------------------------------------------------- |
-| `fetch()` natif                              | `axios` via `src/api/client.ts`                               |
-| DTO dans un screen/composant/hook            | Toujours passer par le mapper                                 |
-| `useState` pour state global                 | `atom()` de Jotai                                             |
-| `atom()` pour état persisté                  | `atomWithMMKV()`                                              |
-| `AsyncStorage`                               | MMKV via `atomWithMMKV`                                       |
-| `moment.js`                                  | `Day.js`                                                      |
-| `import dayjs from 'dayjs'`                  | `import dayjs from '@/src/config/dayjs'`                      |
-| `useNavigation()` React Navigation           | `useRouter()` Expo Router                                     |
-| `navigation.navigate('Screen')`              | `router.push('/path')`                                        |
-| JSX ou logique dans `app/*.tsx`              | `app/` = `_layout.tsx` ou one-liner re-export uniquement      |
-| Composant dans `app/` (ex: modal)            | Créer dans `src/components/`, importer là où c'est nécessaire |
-| Screen utilitaire dans `app/` (ex: debug)    | Créer dans `src/screens/`, importer là où c'est nécessaire    |
-| Imports relatifs remontants (`../`)          | Toujours `@/`                                                 |
-| Screen hors de son dossier domaine           | Placer dans `screens/<domaine>/`                              |
-| Screen sans suffixe `List`/`Detail`/`Screen` | Respecter les suffixes                                        |
-| Screen en camelCase (`mealListScreen.tsx`)   | PascalCase obligatoire (`MealListScreen.tsx`)                 |
-| Interface métier dans `src/types/`           | `src/models/<entity>/<entity>.model.ts`                       |
+| À éviter                                     | À faire                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| `fetch()` natif                              | `axios` via le client dédié à l'API concernée                              |
+| Un seul dossier `src/api/` pour tout         | Un dossier par API : `src/apis/backendApi/`, `src/apis/openFoodFactsApi/`… |
+| Dossier `endpoints/`                         | Dossier `hooks/` contenant les hooks React Query                           |
+| DTO dans un screen/composant/hook            | Toujours passer par le mapper                                              |
+| `useState` pour state global                 | `atom()` de Jotai                                                          |
+| `atom()` pour état persisté                  | `atomWithMMKV()`                                                           |
+| `AsyncStorage`                               | MMKV via `atomWithMMKV`                                                    |
+| `moment.js`                                  | `Day.js`                                                                   |
+| `import dayjs from 'dayjs'`                  | `import dayjs from '@/src/config/dayjs'`                                   |
+| `useNavigation()` React Navigation           | `useRouter()` Expo Router                                                  |
+| `navigation.navigate('Screen')`              | `router.push('/path')`                                                     |
+| JSX ou logique dans `app/*.tsx`              | `app/` = `_layout.tsx` ou one-liner re-export uniquement                   |
+| Imports relatifs remontants (`../`)          | Toujours `@/`                                                              |
+| Screen hors de son dossier domaine           | Placer dans `screens/<domaine>/`                                           |
+| Screen sans suffixe `List`/`Detail`/`Screen` | Respecter les suffixes                                                     |
+| Interface métier dans `src/types/`           | `src/models/<entity>/<entity>.model.ts`                                    |

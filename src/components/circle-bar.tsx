@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
-import { StyleSheet, View, type ViewStyle } from 'react-native'
+import { View, type ViewStyle } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
+import tw from 'twrnc'
 
 import { useColors } from '@/src/hooks/use-colors'
 
@@ -43,7 +44,7 @@ export function CircleBar({
 
   return (
     <View style={[{ width: size, height: size }, style]}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+      <Svg width={size} height={size} style={tw`absolute inset-0`}>
         <Circle
           cx={cx}
           cy={cy}
@@ -71,14 +72,7 @@ export function CircleBar({
           />
         )}
       </Svg>
-      {children && <View style={[StyleSheet.absoluteFill, styles.center]}>{children}</View>}
+      {children && <View style={tw`absolute inset-0 items-center justify-center`}>{children}</View>}
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  center: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-})

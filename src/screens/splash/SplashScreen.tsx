@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Dimensions, StyleSheet } from 'react-native'
+import { Dimensions } from 'react-native'
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import tw from 'twrnc'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 
@@ -52,26 +53,17 @@ export default function SplashScreen({ onReady, onFinish }: Props) {
     // onLayout garantit que hideAsync() n'est appelé qu'une fois la vue réellement peinte
     <Animated.View
       onLayout={onReady}
-      style={[StyleSheet.absoluteFill, styles.container, containerStyle]}
+      style={[
+        tw`absolute inset-0 items-center justify-center overflow-hidden`,
+        { zIndex: 999 },
+        containerStyle,
+      ]}
     >
       <Animated.Image
         source={require('@/assets/logo.png')}
-        style={[styles.logo, logoStyle]}
+        style={[{ width: LOGO_W, height: LOGO_H }, logoStyle]}
         resizeMode="stretch"
       />
     </Animated.View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    zIndex: 999,
-  },
-  logo: {
-    width: LOGO_W,
-    height: LOGO_H,
-  },
-})

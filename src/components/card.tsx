@@ -1,6 +1,6 @@
-import { StyleSheet, View, type ViewProps } from 'react-native'
+import { View, type ViewProps } from 'react-native'
+import tw from 'twrnc'
 
-import { radius, spacing } from '@/src/styles/design-tokens'
 import { useColors } from '@/src/hooks/use-colors'
 
 type CardProps = ViewProps & {
@@ -20,12 +20,9 @@ export function Card({
   return (
     <View
       style={[
-        styles.base,
-        {
-          backgroundColor: elevated ? c.surfaceElevated : c.surface,
-          borderColor: c.border,
-        },
-        !noPadding && styles.padded,
+        tw`rounded-2xl border`,
+        { backgroundColor: elevated ? c.surfaceElevated : c.surface, borderColor: c.border },
+        !noPadding && tw`p-4`,
         style,
       ]}
       {...props}
@@ -34,13 +31,3 @@ export function Card({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-  },
-  padded: {
-    padding: spacing.md,
-  },
-})

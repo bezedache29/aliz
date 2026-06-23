@@ -1,6 +1,6 @@
-import { StyleSheet, View, type ViewProps } from 'react-native'
+import { View, type ViewProps } from 'react-native'
+import tw from 'twrnc'
 
-import { spacing } from '@/src/styles/design-tokens'
 import { Text } from './text'
 
 type StatSize = 'sm' | 'md' | 'lg'
@@ -38,16 +38,16 @@ export function StatItem({
   ...props
 }: StatItemProps) {
   return (
-    <View style={[styles.container, align === 'center' && styles.centered, style]} {...props}>
+    <View style={[tw`gap-1`, align === 'center' && tw`items-center`, style]} {...props}>
       <Text variant="caption" color="muted" uppercase>
         {label}
       </Text>
-      <View style={styles.valueRow}>
+      <View style={tw`flex-row items-end gap-1`}>
         <Text variant={valueVariant[size]} color={trendColor[trend]}>
           {value}
         </Text>
         {unit && (
-          <Text variant="caption" color="muted" style={styles.unit}>
+          <Text variant="caption" color="muted" style={tw`mb-1`}>
             {unit}
           </Text>
         )}
@@ -55,20 +55,3 @@ export function StatItem({
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.xs,
-  },
-  centered: {
-    alignItems: 'center',
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.xs,
-  },
-  unit: {
-    marginBottom: 4,
-  },
-})

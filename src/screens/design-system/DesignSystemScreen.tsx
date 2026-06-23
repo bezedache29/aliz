@@ -1,7 +1,8 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons'
 import { useAtom } from 'jotai'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Pressable, ScrollView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import tw from 'twrnc'
 
 import { Badge } from '@/src/components/badge'
 import { Button } from '@/src/components/button'
@@ -10,14 +11,14 @@ import { CircleBar } from '@/src/components/circle-bar'
 import { ProgressBar } from '@/src/components/progress-bar'
 import { StatItem } from '@/src/components/stat-item'
 import { Text } from '@/src/components/text'
-import { colors, radius, spacing } from '@/src/styles/design-tokens'
+import { colors, spacing } from '@/src/styles/design-tokens'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import { useColors } from '@/src/hooks/use-colors'
 import { themeAtom } from '@/src/store/themeAtom'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.section}>
+    <View style={tw`gap-4`}>
       <Text variant="label" color="muted" uppercase>
         {title}
       </Text>
@@ -28,8 +29,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ColorSwatch({ name, value }: { name: string; value: string }) {
   return (
-    <View style={styles.swatchRow}>
-      <View style={[styles.swatch, { backgroundColor: value }]} />
+    <View style={tw`flex-row items-center gap-2`}>
+      <View style={[tw`w-8 h-8 rounded-lg`, { backgroundColor: value }]} />
       <View>
         <Text variant="caption" color="primary">
           {name}
@@ -53,21 +54,22 @@ export default function DesignSystemScreen() {
   return (
     <SafeAreaView
       edges={['bottom', 'left', 'right']}
-      style={[styles.root, { backgroundColor: c.background }]}
+      style={[tw`flex-1`, { backgroundColor: c.background }]}
     >
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={tw`p-4 gap-8 pb-12`} showsVerticalScrollIndicator={false}>
+        <View style={tw`flex-row justify-between items-start`}>
           <View>
             <Text variant="heading1">Design System</Text>
-            <Text variant="body" color="secondary" style={styles.subtitle}>
+            <Text variant="body" color="secondary" style={tw`-mt-1`}>
               Aliz — Clean & Performance
             </Text>
           </View>
           <Pressable
             onPress={() => setTheme(isDark ? 'light' : 'dark')}
             style={({ pressed }) => [
-              styles.themePill,
+              tw`flex-row items-center gap-1 px-2 rounded-full border mt-1`,
               {
+                paddingVertical: 7,
                 backgroundColor: c.surfaceElevated,
                 borderColor: c.border,
                 opacity: pressed ? 0.7 : 1,
@@ -75,7 +77,7 @@ export default function DesignSystemScreen() {
             ]}
           >
             <MaterialIcons name="wb-sunny" size={15} color={isDark ? c.textMuted : c.primary} />
-            <View style={[styles.pillDivider, { backgroundColor: c.border }]} />
+            <View style={[tw`w-px`, { height: 14, backgroundColor: c.border }]} />
             <MaterialIcons name="nights-stay" size={15} color={isDark ? c.primary : c.textMuted} />
           </Pressable>
         </View>
@@ -84,7 +86,7 @@ export default function DesignSystemScreen() {
         <Section title="Circle Bars">
           {/* Grand ring — calories */}
           <Card>
-            <View style={styles.ringRow}>
+            <View style={tw`flex-row items-center justify-between`}>
               <StatItem label="Mangées" value="1 478" unit="kcal" size="sm" trend="neutral" />
               <CircleBar value={1478} max={2323} size={160} strokeWidth={14} arcAngle={270}>
                 <Text variant="heading2" style={{ fontWeight: '700' }}>
@@ -99,7 +101,7 @@ export default function DesignSystemScreen() {
           </Card>
 
           {/* Petits circles — repas */}
-          <View style={styles.row}>
+          <View style={tw`flex-row gap-2 flex-wrap`}>
             <CircleBar value={322} max={566} size={56} strokeWidth={5} arcAngle={300} />
             <CircleBar value={721} max={755} size={56} strokeWidth={5} arcAngle={300} />
             <CircleBar
@@ -114,7 +116,7 @@ export default function DesignSystemScreen() {
           </View>
 
           {/* Variantes de taille */}
-          <View style={styles.row}>
+          <View style={tw`flex-row gap-2 flex-wrap`}>
             <CircleBar value={75} max={100} size={80} strokeWidth={8} />
             <CircleBar value={40} max={100} size={80} strokeWidth={8} color={c.warning} />
             <CircleBar value={90} max={100} size={80} strokeWidth={8} color={c.info} />
@@ -146,11 +148,11 @@ export default function DesignSystemScreen() {
 
         {/* BOUTONS */}
         <Section title="Boutons">
-          <View style={styles.row}>
+          <View style={tw`flex-row gap-2 flex-wrap`}>
             <Button label="Générer" variant="primary" />
             <Button label="Annuler" variant="secondary" />
           </View>
-          <View style={styles.row}>
+          <View style={tw`flex-row gap-2 flex-wrap`}>
             <Button label="Supprimer" variant="danger" />
             <Button label="Détails" variant="ghost" />
           </View>
@@ -159,7 +161,7 @@ export default function DesignSystemScreen() {
 
         {/* BADGES */}
         <Section title="Badges">
-          <View style={styles.row}>
+          <View style={tw`flex-row gap-2 flex-wrap`}>
             <Badge label="Vélo" variant="success" />
             <Badge label="Attention" variant="warning" />
             <Badge label="Déficit élevé" variant="danger" />
@@ -169,7 +171,7 @@ export default function DesignSystemScreen() {
 
         {/* STAT ITEMS */}
         <Section title="Stat Items">
-          <View style={styles.statsRow}>
+          <View style={tw`flex-row gap-6`}>
             <StatItem label="Objectif" value="1 650" unit="kcal" size="md" trend="neutral" />
             <StatItem label="Déficit" value="-1 405" unit="kcal" size="md" trend="positive" />
             <StatItem label="Brûlées" value="1 200" unit="kcal" size="md" trend="neutral" />
@@ -206,7 +208,7 @@ export default function DesignSystemScreen() {
             <Text variant="label" color="muted" uppercase>
               Résumé du jour
             </Text>
-            <View style={styles.ringRow}>
+            <View style={tw`flex-row items-center justify-between`}>
               <StatItem label="Mangées" value="1 478" unit="kcal" size="sm" trend="neutral" />
               <CircleBar value={1478} max={2323} size={140} strokeWidth={12} arcAngle={270}>
                 <Text variant="heading2" style={{ fontWeight: '700' }}>
@@ -218,11 +220,16 @@ export default function DesignSystemScreen() {
               </CircleBar>
               <StatItem label="Brûlées" value="142" unit="kcal" size="sm" trend="neutral" />
             </View>
-            <View style={[styles.divider, { marginTop: spacing.md }]} />
-            <Text variant="label" color="muted" uppercase style={{ marginBottom: spacing.sm }}>
+            <View
+              style={[
+                tw`h-px my-2`,
+                { marginTop: spacing.md, backgroundColor: 'rgba(148,163,184,0.15)' },
+              ]}
+            />
+            <Text variant="label" color="muted" uppercase style={tw`mb-2`}>
               Macros
             </Text>
-            <View style={styles.macros}>
+            <View style={tw`gap-4`}>
               <ProgressBar label="Protéines" value={120} max={180} color={c.tertiary} />
               <ProgressBar label="Glucides" value={165} max={220} color={c.warning} />
               <ProgressBar label="Lipides" value={45} max={75} color={c.info} />
@@ -239,7 +246,7 @@ export default function DesignSystemScreen() {
             <Text variant="label" color="muted" uppercase>
               Résumé du jour
             </Text>
-            <View style={styles.ringRow}>
+            <View style={tw`flex-row items-center justify-between`}>
               <StatItem label="Mangées" value="1 478" unit="kcal" size="sm" trend="neutral" />
               <CircleBar value={1478} max={2323} size={140} strokeWidth={12} arcAngle={270}>
                 <Text variant="heading2" style={{ fontWeight: '700' }}>
@@ -251,12 +258,17 @@ export default function DesignSystemScreen() {
               </CircleBar>
               <StatItem label="Brûlées" value="142" unit="kcal" size="sm" trend="neutral" />
             </View>
-            <View style={[styles.divider, { marginTop: spacing.md }]} />
-            <Text variant="label" color="muted" uppercase style={{ marginBottom: spacing.md }}>
+            <View
+              style={[
+                tw`h-px my-2`,
+                { marginTop: spacing.md, backgroundColor: 'rgba(148,163,184,0.15)' },
+              ]}
+            />
+            <Text variant="label" color="muted" uppercase style={tw`mb-4`}>
               Macros
             </Text>
-            <View style={styles.macrosCircle}>
-              <View style={styles.macroItem}>
+            <View style={tw`flex-row justify-around`}>
+              <View style={tw`items-center gap-0.5`}>
                 <CircleBar
                   value={120}
                   max={180}
@@ -265,12 +277,12 @@ export default function DesignSystemScreen() {
                   arcAngle={300}
                   color={macroColor(120, 180, c.tertiary)}
                 />
-                <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs }}>
+                <Text variant="caption" color="secondary" style={tw`mt-1`}>
                   Protéines
                 </Text>
                 <Text variant="label">120 / 180 g</Text>
               </View>
-              <View style={styles.macroItem}>
+              <View style={tw`items-center gap-0.5`}>
                 <CircleBar
                   value={165}
                   max={220}
@@ -279,12 +291,12 @@ export default function DesignSystemScreen() {
                   arcAngle={300}
                   color={macroColor(165, 220, c.warning)}
                 />
-                <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs }}>
+                <Text variant="caption" color="secondary" style={tw`mt-1`}>
                   Glucides
                 </Text>
                 <Text variant="label">165 / 220 g</Text>
               </View>
-              <View style={styles.macroItem}>
+              <View style={tw`items-center gap-0.5`}>
                 <CircleBar
                   value={45}
                   max={75}
@@ -293,7 +305,7 @@ export default function DesignSystemScreen() {
                   arcAngle={300}
                   color={macroColor(45, 75, c.info)}
                 />
-                <Text variant="caption" color="secondary" style={{ marginTop: spacing.xs }}>
+                <Text variant="caption" color="secondary" style={tw`mt-1`}>
                   Lipides
                 </Text>
                 <Text variant="label">45 / 75 g</Text>
@@ -311,7 +323,7 @@ export default function DesignSystemScreen() {
             <Text variant="label" color="muted" uppercase>
               Résumé du jour
             </Text>
-            <View style={styles.ringRow}>
+            <View style={tw`flex-row items-center justify-between`}>
               <StatItem label="Mangées" value="1 478" unit="kcal" size="sm" trend="neutral" />
               <CircleBar value={1478} max={2323} size={140} strokeWidth={12} arcAngle={270}>
                 <Text variant="heading2" style={{ fontWeight: '700' }}>
@@ -323,19 +335,29 @@ export default function DesignSystemScreen() {
               </CircleBar>
               <StatItem label="Brûlées" value="142" unit="kcal" size="sm" trend="neutral" />
             </View>
-            <View style={[styles.divider, { marginTop: spacing.md }]} />
-            <Text variant="label" color="muted" uppercase style={{ marginBottom: spacing.sm }}>
+            <View
+              style={[
+                tw`h-px my-2`,
+                { marginTop: spacing.md, backgroundColor: 'rgba(148,163,184,0.15)' },
+              ]}
+            />
+            <Text variant="label" color="muted" uppercase style={tw`mb-2`}>
               Macros
             </Text>
-            <View style={styles.macrosInline}>
-              <View style={styles.macrosInlineItem}>
+            <View style={tw`flex-row gap-4`}>
+              <View style={tw`flex-1 gap-1`}>
                 <Text variant="caption" color="secondary">
                   Protéines
                 </Text>
-                <View style={[styles.track, { backgroundColor: c.surfaceElevated }]}>
+                <View
+                  style={[
+                    tw`h-1.5 rounded-full overflow-hidden`,
+                    { backgroundColor: c.surfaceElevated },
+                  ]}
+                >
                   <View
                     style={[
-                      styles.fill,
+                      tw`h-full rounded-full`,
                       {
                         backgroundColor: macroColor(120, 180, c.tertiary),
                         width: `${(120 / 180) * 100}%`,
@@ -347,14 +369,19 @@ export default function DesignSystemScreen() {
                   120 / 180 g
                 </Text>
               </View>
-              <View style={styles.macrosInlineItem}>
+              <View style={tw`flex-1 gap-1`}>
                 <Text variant="caption" color="secondary">
                   Glucides
                 </Text>
-                <View style={[styles.track, { backgroundColor: c.surfaceElevated }]}>
+                <View
+                  style={[
+                    tw`h-1.5 rounded-full overflow-hidden`,
+                    { backgroundColor: c.surfaceElevated },
+                  ]}
+                >
                   <View
                     style={[
-                      styles.fill,
+                      tw`h-full rounded-full`,
                       {
                         backgroundColor: macroColor(165, 220, c.warning),
                         width: `${(165 / 220) * 100}%`,
@@ -366,14 +393,19 @@ export default function DesignSystemScreen() {
                   165 / 220 g
                 </Text>
               </View>
-              <View style={styles.macrosInlineItem}>
+              <View style={tw`flex-1 gap-1`}>
                 <Text variant="caption" color="secondary">
                   Lipides
                 </Text>
-                <View style={[styles.track, { backgroundColor: c.surfaceElevated }]}>
+                <View
+                  style={[
+                    tw`h-1.5 rounded-full overflow-hidden`,
+                    { backgroundColor: c.surfaceElevated },
+                  ]}
+                >
                   <View
                     style={[
-                      styles.fill,
+                      tw`h-full rounded-full`,
                       { backgroundColor: macroColor(45, 75, c.info), width: `${(45 / 75) * 100}%` },
                     ]}
                   />
@@ -395,109 +427,3 @@ export default function DesignSystemScreen() {
     </SafeAreaView>
   )
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  scroll: {
-    padding: spacing.md,
-    gap: spacing.xl,
-    paddingBottom: spacing['2xl'],
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  subtitle: {
-    marginTop: -spacing.xs,
-  },
-  themePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    marginTop: spacing.xs,
-  },
-  pillDivider: {
-    width: 1,
-    height: 14,
-  },
-  section: {
-    gap: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  swatchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  swatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  bigStat: {
-    marginVertical: spacing.sm,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(148,163,184,0.15)',
-    marginVertical: spacing.sm,
-  },
-  ringRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  macros: {
-    gap: spacing.md,
-  },
-  weightRow: {
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  macrosInline: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  macrosInlineItem: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  track: {
-    height: 6,
-    borderRadius: 99,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 99,
-  },
-  macrosCircle: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  macroItem: {
-    alignItems: 'center',
-    gap: 2,
-  },
-})

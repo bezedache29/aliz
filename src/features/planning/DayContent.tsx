@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue } from 'jotai'
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { RefreshControl, ScrollView, View } from 'react-native'
+import tw from 'twrnc'
 
 import { Card } from '@/src/components/card'
 import { Text } from '@/src/components/text'
@@ -7,7 +8,6 @@ import { useColors } from '@/src/hooks/use-colors'
 import { useRefresh } from '@/src/hooks/use-refresh'
 import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
 import { selectedDateAtom, weekPlanAtom } from '@/src/store/planningAtom'
-import { spacing } from '@/src/styles/design-tokens'
 
 import { MealSlot } from './MealSlot'
 
@@ -39,8 +39,8 @@ export function DayContent() {
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={styles.content}
+      style={tw`flex-1`}
+      contentContainerStyle={tw`p-4 gap-2 pb-8`}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -52,7 +52,7 @@ export function DayContent() {
       }
     >
       {/* En-tête du jour */}
-      <View style={styles.dateHeader}>
+      <View style={tw`mb-2 gap-0.5`}>
         <Text variant="label" color="muted" uppercase style={{ letterSpacing: 1 }}>
           {dayName}
         </Text>
@@ -62,11 +62,11 @@ export function DayContent() {
       </View>
 
       {/* Section repas */}
-      <Text variant="label" color="muted" uppercase style={styles.sectionLabel}>
+      <Text variant="label" color="muted" uppercase style={[tw`mb-1 mt-1`, { letterSpacing: 0.8 }]}>
         Alimentation
       </Text>
 
-      <Card noPadding style={{ paddingHorizontal: spacing.md }}>
+      <Card noPadding style={tw`px-4`}>
         {MEAL_ORDER.map((meal, index) => (
           <MealSlot
             key={meal}
@@ -81,7 +81,12 @@ export function DayContent() {
 
       {/* Total kcal */}
       {totalKcal > 0 && (
-        <View style={[styles.totalRow, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View
+          style={[
+            tw`flex-row justify-between items-center mt-1 p-4 rounded-xl border`,
+            { backgroundColor: c.surface, borderColor: c.border },
+          ]}
+        >
           <Text variant="label" color="muted" uppercase style={{ letterSpacing: 0.5 }}>
             Total du jour
           </Text>
@@ -93,29 +98,3 @@ export function DayContent() {
     </ScrollView>
   )
 }
-
-const styles = StyleSheet.create({
-  content: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    paddingBottom: spacing.xl,
-  },
-  dateHeader: {
-    marginBottom: spacing.sm,
-    gap: 2,
-  },
-  sectionLabel: {
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    padding: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-})

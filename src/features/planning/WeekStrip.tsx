@@ -3,11 +3,11 @@ import dayjs from '@/src/config/dayjs'
 import { Dayjs } from 'dayjs'
 import { useAtom } from 'jotai'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
+import tw from 'twrnc'
 
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { selectedDateAtom } from '@/src/store/planningAtom'
-import { spacing } from '@/src/styles/design-tokens'
 
 const DAY_LABELS = ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di']
 
@@ -23,14 +23,26 @@ export function WeekStrip() {
   const weekLabel = `${startOfWeek.format('D')} – ${startOfWeek.add(6, 'day').format('D MMMM YYYY')}`
 
   return (
-    <View style={[styles.container, { backgroundColor: c.surface, borderBottomColor: c.border }]}>
+    <View
+      style={[
+        tw`pt-2 pb-4 px-4`,
+        {
+          backgroundColor: c.surface,
+          borderBottomColor: c.border,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+        },
+      ]}
+    >
       {/* Navigation semaine */}
-      <View style={styles.nav}>
+      <View style={tw`flex-row items-center justify-between mb-4`}>
         <TouchableOpacity
           testID="prev-week"
           onPress={() => setSelectedDate(selectedDate.subtract(1, 'week'))}
           hitSlop={12}
-          style={[styles.navButton, { backgroundColor: c.surfaceElevated }]}
+          style={[
+            tw`w-7 h-7 rounded-full items-center justify-center`,
+            { backgroundColor: c.surfaceElevated },
+          ]}
         >
           <Ionicons name="chevron-back" size={16} color={c.textSecondary} />
         </TouchableOpacity>
@@ -43,14 +55,17 @@ export function WeekStrip() {
           testID="next-week"
           onPress={() => setSelectedDate(selectedDate.add(1, 'week'))}
           hitSlop={12}
-          style={[styles.navButton, { backgroundColor: c.surfaceElevated }]}
+          style={[
+            tw`w-7 h-7 rounded-full items-center justify-center`,
+            { backgroundColor: c.surfaceElevated },
+          ]}
         >
           <Ionicons name="chevron-forward" size={16} color={c.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* Jours */}
-      <View style={styles.daysRow}>
+      <View style={tw`flex-row justify-between`}>
         {days.map((day, index) => {
           const isSelected = day.isSame(selectedDate, 'day')
           const isToday = day.isSame(today, 'day')
@@ -58,7 +73,7 @@ export function WeekStrip() {
           return (
             <TouchableOpacity
               key={index}
-              style={styles.dayColumn}
+              style={tw`flex-1 items-center gap-1`}
               onPress={() => setSelectedDate(day)}
               activeOpacity={0.7}
             >
@@ -72,7 +87,12 @@ export function WeekStrip() {
                 {DAY_LABELS[index]}
               </Text>
 
-              <View style={[styles.dayCircle, isSelected && { backgroundColor: c.primary }]}>
+              <View
+                style={[
+                  tw`w-9 h-9 rounded-full overflow-hidden items-center justify-center`,
+                  isSelected && { backgroundColor: c.primary },
+                ]}
+              >
                 <Text
                   variant="body"
                   style={{
@@ -86,7 +106,7 @@ export function WeekStrip() {
 
               <View
                 style={[
-                  styles.todayDot,
+                  tw`w-1 h-1 rounded-full`,
                   { backgroundColor: isToday && !isSelected ? c.primary : 'transparent' },
                 ]}
               />
@@ -97,47 +117,3 @@ export function WeekStrip() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  navButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  daysRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayColumn: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-})

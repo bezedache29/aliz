@@ -1,12 +1,6 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  type PressableProps,
-  type ViewStyle,
-} from 'react-native'
+import { ActivityIndicator, Pressable, type PressableProps, type ViewStyle } from 'react-native'
+import tw from 'twrnc'
 
-import { radius, spacing } from '@/src/styles/design-tokens'
 import { useColors } from '@/src/hooks/use-colors'
 import { Text } from './text'
 
@@ -21,10 +15,10 @@ type ButtonProps = PressableProps & {
   fullWidth?: boolean
 }
 
-const sizeStyles: Record<ButtonSize, ViewStyle & { fontSize?: number }> = {
-  sm: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  md: { paddingVertical: 12, paddingHorizontal: spacing.md },
-  lg: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
+const sizeStyles = {
+  sm: tw`py-1 px-2`,
+  md: tw`py-3 px-4`,
+  lg: tw`py-4 px-6`,
 }
 
 export function Button({
@@ -53,7 +47,7 @@ export function Button({
     <Pressable
       disabled={isDisabled}
       style={({ pressed }) => [
-        styles.base,
+        tw`rounded-xl border flex-row items-center justify-center gap-1`,
         sizeStyles[size],
         {
           backgroundColor: v.bg,
@@ -75,14 +69,3 @@ export function Button({
     </Pressable>
   )
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-})

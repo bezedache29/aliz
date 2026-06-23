@@ -3,14 +3,16 @@ import '@/src/config/reactotron'
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import * as ExpoSplash from 'expo-splash-screen'
-import { Stack } from 'expo-router'
+import { Stack, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { useAtomValue } from 'jotai'
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import SplashScreen from '@/src/screens/splash/SplashScreen'
+import { onboardingAtom } from '@/src/store/onboardingAtom'
 
 ExpoSplash.preventAutoHideAsync()
 
@@ -55,6 +57,8 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
+  const router = useRouter()
+  const onboarding = useAtomValue(onboardingAtom)
   const [showSplash, setShowSplash] = useState(true)
 
   return (
@@ -67,7 +71,12 @@ export default function RootLayout() {
         <StatusBar style="auto" />
         {showSplash && (
           <SplashScreen
-            onReady={() => ExpoSplash.hideAsync()}
+            onReady={() => {
+              ExpoSplash.hideAsync()
+              if (!onboarding.completed) {
+                router.replace('/onboarding')
+              }
+            }}
             onFinish={() => setShowSplash(false)}
           />
         )}

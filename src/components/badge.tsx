@@ -1,6 +1,6 @@
-import { StyleSheet, View, type ViewProps } from 'react-native'
+import { View, type ViewProps } from 'react-native'
+import tw from 'twrnc'
 
-import { radius, spacing } from '@/src/styles/design-tokens'
 import { useColors } from '@/src/hooks/use-colors'
 import { Text } from './text'
 
@@ -24,19 +24,13 @@ export function Badge({ label, variant = 'neutral', style, ...props }: BadgeProp
   const v = variantMap[variant]
 
   return (
-    <View style={[styles.base, { backgroundColor: v.bg }, style]} {...props}>
+    <View
+      style={[tw`rounded-full py-1 px-2 self-start`, { backgroundColor: v.bg }, style]}
+      {...props}
+    >
       <Text variant="label" uppercase style={{ color: v.text }}>
         {label}
       </Text>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: radius.full,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    alignSelf: 'flex-start',
-  },
-})

@@ -1,6 +1,6 @@
-import { StyleSheet, View, type ViewProps } from 'react-native'
+import { View, type ViewProps } from 'react-native'
+import tw from 'twrnc'
 
-import { radius, spacing } from '@/src/styles/design-tokens'
 import { useColors } from '@/src/hooks/use-colors'
 import { Text } from './text'
 
@@ -32,15 +32,25 @@ export function ProgressBar({
 
   if (inline) {
     return (
-      <View style={[styles.inlineContainer, style]} {...props}>
-        <Text variant="caption" color="secondary" style={styles.inlineLabel}>
+      <View style={[tw`flex-row items-center gap-2`, style]} {...props}>
+        <Text variant="caption" color="secondary" style={tw`w-18`}>
           {label}
         </Text>
-        <View style={[styles.track, styles.inlineTrack, { backgroundColor: c.surfaceElevated }]}>
-          <View style={[styles.fill, { backgroundColor: fill, width: `${progress * 100}%` }]} />
+        <View
+          style={[
+            tw`flex-1 h-1.5 rounded-full overflow-hidden`,
+            { backgroundColor: c.surfaceElevated },
+          ]}
+        >
+          <View
+            style={[
+              tw`h-full rounded-full`,
+              { backgroundColor: fill, width: `${progress * 100}%` },
+            ]}
+          />
         </View>
         {showValues && (
-          <Text variant="caption" color="secondary" style={styles.inlineValues}>
+          <Text variant="caption" color="secondary" style={tw`w-16 text-right`}>
             {value}
             <Text variant="caption" color="muted">
               /{max}
@@ -53,8 +63,8 @@ export function ProgressBar({
   }
 
   return (
-    <View style={[styles.container, style]} {...props}>
-      <View style={styles.header}>
+    <View style={[tw`gap-1`, style]} {...props}>
+      <View style={tw`flex-row justify-between items-center`}>
         <Text variant="caption" color="secondary">
           {label}
         </Text>
@@ -68,44 +78,13 @@ export function ProgressBar({
           </Text>
         )}
       </View>
-      <View style={[styles.track, { backgroundColor: c.surfaceElevated }]}>
-        <View style={[styles.fill, { backgroundColor: fill, width: `${progress * 100}%` }]} />
+      <View
+        style={[tw`h-1.5 rounded-full overflow-hidden`, { backgroundColor: c.surfaceElevated }]}
+      >
+        <View
+          style={[tw`h-full rounded-full`, { backgroundColor: fill, width: `${progress * 100}%` }]}
+        />
       </View>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.xs,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  track: {
-    height: 6,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: radius.full,
-  },
-  inlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  inlineLabel: {
-    width: 72,
-  },
-  inlineTrack: {
-    flex: 1,
-  },
-  inlineValues: {
-    width: 64,
-    textAlign: 'right',
-  },
-})

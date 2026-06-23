@@ -1,4 +1,5 @@
-import { StyleSheet, Text, type TextProps } from 'react-native'
+import { Text, type TextProps } from 'react-native'
+import tw from 'twrnc'
 
 import { useThemeColor } from '@/src/hooks/use-theme-color'
 
@@ -6,6 +7,14 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string
   darkColor?: string
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link'
+}
+
+const typeStyles = {
+  default: tw`text-base leading-6`,
+  defaultSemiBold: tw`text-base leading-6 font-semibold`,
+  title: tw`text-[32px] font-bold leading-8`,
+  subtitle: tw`text-xl font-bold`,
+  link: tw`text-base`,
 }
 
 export function ThemedText({
@@ -16,45 +25,17 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text')
+  const linkColor = type === 'link' ? '#0a7ea4' : undefined
 
   return (
     <Text
       style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        { color: linkColor ?? color },
+        typeStyles[type],
+        type === 'link' && { lineHeight: 30 },
         style,
       ]}
       {...rest}
     />
   )
 }
-
-const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 16,
-    color: '#0a7ea4',
-  },
-})

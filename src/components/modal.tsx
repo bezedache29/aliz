@@ -1,29 +1,16 @@
 import { Link } from 'expo-router'
-import { StyleSheet } from 'react-native'
+import tw from 'twrnc'
 
 import { ThemedText } from '@/src/components/themed-text'
 import { ThemedView } from '@/src/components/themed-view'
 
 export default function Modal() {
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={tw`flex-1 items-center justify-center p-5`}>
       <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
+      <Link href="/" dismissTo style={[tw`mt-4 py-4`]}>
         <ThemedText type="link">Go to home screen</ThemedText>
       </Link>
     </ThemedView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-})

@@ -1,4 +1,6 @@
-import { RefreshControl, ScrollView } from 'react-native'
+import { RefreshControl } from 'react-native'
+
+import { ScrollView } from '@/src/components/scroll-view'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Text } from '@/src/components/text'

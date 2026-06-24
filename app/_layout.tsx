@@ -5,17 +5,14 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
 import * as ExpoSplash from 'expo-splash-screen'
-import { Stack, useRouter } from 'expo-router'
+import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useAtomValue } from 'jotai'
-import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
+import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
-import SplashScreen from '@/src/screens/splash/SplashScreen'
-import { onboardingAtom } from '@/src/store/onboardingAtom'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,9 +66,10 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
-  const router = useRouter()
-  const onboarding = useAtomValue(onboardingAtom)
-  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    ExpoSplash.hideAsync()
+  }, [])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -83,19 +81,10 @@ export default function RootLayout() {
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="food-search" options={{ headerShown: false }} />
+                <Stack.Screen name="recipe-search" options={{ headerShown: false }} />
+                <Stack.Screen name="recipe-create" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style="auto" />
-              {showSplash && (
-                <SplashScreen
-                  onReady={() => {
-                    ExpoSplash.hideAsync()
-                    if (!onboarding.completed) {
-                      router.replace('/onboarding')
-                    }
-                  }}
-                  onFinish={() => setShowSplash(false)}
-                />
-              )}
             </BottomSheetModalProvider>
           </ThemeProvider>
         </ErrorBoundary>

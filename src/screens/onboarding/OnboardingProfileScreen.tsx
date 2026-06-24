@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
 import { Controller, useForm } from 'react-hook-form'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native'
+import { Platform, Pressable, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { Button } from '@/src/components/button'
 import { Input } from '@/src/components/input'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
+import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
@@ -64,119 +65,118 @@ export default function OnboardingProfileScreen() {
 
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView
-        style={tw`flex-1`}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <ScrollView
+        contentContainerStyle={tw`p-6 gap-8`}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
-        <ScrollView contentContainerStyle={tw`p-6 gap-8`} keyboardShouldPersistTaps="handled">
-          <OnboardingProgress current={1} />
+        <OnboardingProgress current={1} />
 
-          <View style={tw`gap-2`}>
-            <Text variant="heading1">Parle-moi de toi</Text>
-            <Text variant="body" color="secondary">
-              Quelques infos pour personnaliser ton programme.
-            </Text>
-          </View>
+        <View style={tw`gap-2`}>
+          <Text variant="heading1">Parle-moi de toi</Text>
+          <Text variant="body" color="secondary">
+            Quelques infos pour personnaliser ton programme.
+          </Text>
+        </View>
 
-          <View style={tw`gap-6`}>
-            <Controller
-              control={control}
-              name="firstName"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Prénom"
-                  placeholder="Christophe"
-                  value={value ?? ''}
-                  onChangeText={onChange}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  error={errors.firstName?.message}
-                />
-              )}
-            />
+        <View style={tw`gap-6`}>
+          <Controller
+            control={control}
+            name="firstName"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Prénom"
+                placeholder="Christophe"
+                value={value ?? ''}
+                onChangeText={onChange}
+                autoCapitalize="words"
+                returnKeyType="next"
+                error={errors.firstName?.message}
+              />
+            )}
+          />
 
-            <Controller
-              control={control}
-              name="age"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Âge"
-                  placeholder="30"
-                  value={value?.toString() ?? ''}
-                  onChangeText={onChange}
-                  keyboardType="numeric"
-                  unit="ans"
-                  error={errors.age?.message}
-                />
-              )}
-            />
+          <Controller
+            control={control}
+            name="age"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Âge"
+                placeholder="30"
+                value={value?.toString() ?? ''}
+                onChangeText={onChange}
+                keyboardType="numeric"
+                unit="ans"
+                error={errors.age?.message}
+              />
+            )}
+          />
 
-            <Controller
-              control={control}
-              name="sex"
-              render={({ field: { onChange, value } }) => (
-                <View style={tw`gap-1`}>
-                  <Text variant="label" color="secondary" uppercase>
-                    Sexe
-                  </Text>
-                  <View style={tw`flex-row gap-2`}>
-                    {(['male', 'female'] as const).map((option) => {
-                      const selected = value === option
-                      return (
-                        <Pressable
-                          key={option}
-                          onPress={() => onChange(option)}
-                          style={[
-                            tw`flex-1 py-4 rounded-xl items-center`,
-                            {
-                              borderWidth: 1.5,
-                              borderColor: selected ? c.primary : c.border,
-                              backgroundColor: selected ? `${c.primary}18` : c.surface,
-                            },
-                          ]}
+          <Controller
+            control={control}
+            name="sex"
+            render={({ field: { onChange, value } }) => (
+              <View style={tw`gap-1`}>
+                <Text variant="label" color="secondary" uppercase>
+                  Sexe
+                </Text>
+                <View style={tw`flex-row gap-2`}>
+                  {(['male', 'female'] as const).map((option) => {
+                    const selected = value === option
+                    return (
+                      <Pressable
+                        key={option}
+                        onPress={() => onChange(option)}
+                        style={[
+                          tw`flex-1 py-4 rounded-xl items-center`,
+                          {
+                            borderWidth: 1.5,
+                            borderColor: selected ? c.primary : c.border,
+                            backgroundColor: selected ? `${c.primary}18` : c.surface,
+                          },
+                        ]}
+                      >
+                        <Text
+                          variant="body"
+                          style={{
+                            color: selected ? c.primary : c.textPrimary,
+                            fontWeight: '600',
+                          }}
                         >
-                          <Text
-                            variant="body"
-                            style={{
-                              color: selected ? c.primary : c.textPrimary,
-                              fontWeight: '600',
-                            }}
-                          >
-                            {option === 'male' ? 'Homme' : 'Femme'}
-                          </Text>
-                        </Pressable>
-                      )
-                    })}
-                  </View>
-                  {errors.sex && (
-                    <Text variant="caption" color="danger">
-                      {errors.sex.message}
-                    </Text>
-                  )}
+                          {option === 'male' ? 'Homme' : 'Femme'}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
                 </View>
-              )}
-            />
+                {errors.sex && (
+                  <Text variant="caption" color="danger">
+                    {errors.sex.message}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
 
-            <Controller
-              control={control}
-              name="height"
-              render={({ field: { onChange, value } }) => (
-                <Input
-                  label="Taille"
-                  placeholder="175"
-                  value={value?.toString() ?? ''}
-                  onChangeText={onChange}
-                  keyboardType="numeric"
-                  unit="cm"
-                  error={errors.height?.message}
-                />
-              )}
-            />
-          </View>
+          <Controller
+            control={control}
+            name="height"
+            render={({ field: { onChange, value } }) => (
+              <Input
+                label="Taille"
+                placeholder="175"
+                value={value?.toString() ?? ''}
+                onChangeText={onChange}
+                keyboardType="numeric"
+                unit="cm"
+                error={errors.height?.message}
+              />
+            )}
+          />
+        </View>
 
-          <Button label="Continuer" fullWidth size="lg" onPress={handleSubmit(onSubmit)} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Button label="Continuer" fullWidth size="lg" onPress={handleSubmit(onSubmit)} />
+      </ScrollView>
     </SafeAreaView>
   )
 }

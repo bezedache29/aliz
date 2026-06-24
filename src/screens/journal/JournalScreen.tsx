@@ -3,7 +3,9 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet'
 import { useRouter } from 'expo-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { View } from 'react-native'
+
+import { ScrollView } from '@/src/components/scroll-view'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
@@ -95,11 +97,8 @@ export default function JournalScreen() {
   }
 
   return (
-    <SafeAreaView
-      edges={['bottom', 'left', 'right']}
-      style={[tw`flex-1`, { backgroundColor: c.background }]}
-    >
-      <ScrollView contentContainerStyle={tw`p-4 gap-4 pb-6`} showsVerticalScrollIndicator={false}>
+    <SafeAreaView edges={['left', 'right']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
+      <ScrollView contentContainerStyle={tw`p-4 gap-4`} showsVerticalScrollIndicator={false}>
         <View style={tw`gap-1`}>
           <Text variant="heading1">
             {onboarding.firstName ? `Bonjour, ${onboarding.firstName} !` : 'Bonjour !'}
@@ -342,7 +341,10 @@ export default function JournalScreen() {
           pickerSheetRef.current?.dismiss()
           if (activeMeal) router.push(`/food-search?mealType=${encodeURIComponent(activeMeal)}`)
         }}
-        onSelectRecipe={() => pickerSheetRef.current?.dismiss()}
+        onSelectRecipe={() => {
+          pickerSheetRef.current?.dismiss()
+          if (activeMeal) router.push(`/recipe-search?mealType=${encodeURIComponent(activeMeal)}`)
+        }}
       />
     </SafeAreaView>
   )

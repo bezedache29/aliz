@@ -35,6 +35,7 @@ import { useColors } from '@/src/hooks/use-colors'
 import { FoodProduct } from '@/src/models/food/food.model'
 import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
 import { addCustomFood, customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
+import { pendingIngredientAtom } from '@/src/store/pendingIngredientAtom'
 import { addToRecent, recentFoodsAtom } from '@/src/store/recentFoodsAtom'
 import { weekPlanAtom } from '@/src/store/planningAtom'
 
@@ -207,11 +208,13 @@ function FoodItem({
 
 export default function FoodSearchScreen() {
   const router = useRouter()
-  const { mealType } = useLocalSearchParams<{ mealType: string }>()
+  const { mealType, context } = useLocalSearchParams<{ mealType: string; context: string }>()
   const c = useColors()
   const setWeekPlan = useSetAtom(weekPlanAtom)
   const [recentFoods, setRecentFoods] = useAtom(recentFoodsAtom)
   const [customFoods, setCustomFoods] = useAtom(customFoodsAtom)
+  const setPendingIngredient = useSetAtom(pendingIngredientAtom)
+  const isRecipeMode = context === 'recipe'
   const todayKey = dayjs().format('YYYY-MM-DD')
 
   const [mode, setMode] = useState<SearchMode>('favorites')
@@ -311,6 +314,16 @@ export default function FoodSearchScreen() {
         lipides: data.lipides,
       },
     }
+    setCustomFoods((prev) => addCustomFood(prev, food))
+
+    if (isRecipeMode) {
+      setPendingIngredient({ food, quantityG: data.quantite })
+      addFoodSheetRef.current?.dismiss()
+      reset()
+      router.back()
+      return
+    }
+
     if (mealType) {
       const macros = calcMacros(food, data.quantite)
       const meal: PlannedMeal = {
@@ -325,15 +338,22 @@ export default function FoodSearchScreen() {
       }))
       setRecentFoods((prev) => addToRecent(prev, food))
     }
-    setCustomFoods((prev) => addCustomFood(prev, food))
     addFoodSheetRef.current?.dismiss()
     reset()
     router.back()
   }
 
   function handleAdd() {
-    if (!selectedFood || !mealType) return
+    if (!selectedFood) return
     const grams = parseFloat(quantityStr.replace(',', '.')) || 100
+
+    if (isRecipeMode) {
+      setPendingIngredient({ food: selectedFood, quantityG: grams })
+      router.back()
+      return
+    }
+
+    if (!mealType) return
     const macros = calcMacros(selectedFood, grams)
 
     const meal: PlannedMeal = {
@@ -389,9 +409,9 @@ export default function FoodSearchScreen() {
           </TouchableOpacity>
           <View style={tw`flex-1`}>
             <Text variant="heading3" style={{ fontWeight: '700' }}>
-              Aliment unique
+              {isRecipeMode ? 'Ajouter un ingrédient' : 'Aliment unique'}
             </Text>
-            {mealType && (
+            {!isRecipeMode && mealType && (
               <Text variant="caption" color="secondary">
                 {mealType}
               </Text>

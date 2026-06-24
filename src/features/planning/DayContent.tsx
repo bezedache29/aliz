@@ -1,5 +1,7 @@
 import { useAtom, useAtomValue } from 'jotai'
-import { RefreshControl, ScrollView, View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
+
+import { ScrollView } from '@/src/components/scroll-view'
 import tw from 'twrnc'
 
 import { Card } from '@/src/components/card'

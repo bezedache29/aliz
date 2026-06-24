@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
-import { ScrollView, View } from 'react-native'
+import { View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { Button } from '@/src/components/button'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
+import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { onboardingAtom } from '@/src/store/onboardingAtom'

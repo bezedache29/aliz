@@ -7,6 +7,7 @@ import {
   removeRecipe,
   searchRecipes,
   toggleFavorite,
+  updateRecipe,
 } from '@/src/store/recipesAtom'
 
 // Recette minimale valide pour les tests unitaires
@@ -119,6 +120,42 @@ describe('toggleFavorite', () => {
     const prev = [makeRecipe({ id: 'recipe-1', isFavorite: false })]
     toggleFavorite(prev, 'recipe-1')
     expect(prev[0].isFavorite).toBe(false)
+  })
+})
+
+describe('updateRecipe', () => {
+  it('remplace la recette avec le même id', () => {
+    const r1 = makeRecipe({ id: 'recipe-1', name: 'Ancien nom' })
+    const r2 = makeRecipe({ id: 'recipe-2' })
+    const updated = makeRecipe({ id: 'recipe-1', name: 'Nouveau nom' })
+    const result = updateRecipe([r1, r2], updated)
+    expect(result[0].name).toBe('Nouveau nom')
+    expect(result[1].id).toBe('recipe-2')
+  })
+
+  it("retourne la liste inchangée si l'id est inconnu", () => {
+    const r1 = makeRecipe({ id: 'recipe-1', name: 'Test' })
+    const updated = makeRecipe({ id: 'inexistant', name: 'X' })
+    const result = updateRecipe([r1], updated)
+    expect(result[0].name).toBe('Test')
+  })
+
+  it('préserve la position dans la liste', () => {
+    const r1 = makeRecipe({ id: 'recipe-1' })
+    const r2 = makeRecipe({ id: 'recipe-2', name: 'À modifier' })
+    const r3 = makeRecipe({ id: 'recipe-3' })
+    const updated = makeRecipe({ id: 'recipe-2', name: 'Modifié' })
+    const result = updateRecipe([r1, r2, r3], updated)
+    expect(result[1].name).toBe('Modifié')
+    expect(result[0].id).toBe('recipe-1')
+    expect(result[2].id).toBe('recipe-3')
+  })
+
+  it('ne modifie pas le tableau source (immutabilité)', () => {
+    const prev = [makeRecipe({ id: 'recipe-1', name: 'Original' })]
+    const updated = makeRecipe({ id: 'recipe-1', name: 'Modifié' })
+    updateRecipe(prev, updated)
+    expect(prev[0].name).toBe('Original')
   })
 })
 

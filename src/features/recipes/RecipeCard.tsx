@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useState } from 'react'
+import { BottomSheetModal } from '@gorhom/bottom-sheet'
+import { useRef, useState } from 'react'
 import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import tw from 'twrnc'
 
 import { Button } from '@/src/components/button'
+import { ConfirmModal } from '@/src/components/confirm-modal'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { MealType } from '@/src/models/planning/planning.model'
@@ -67,11 +69,14 @@ type Props = {
   mealType?: MealType
   onAdd?: (recipe: Recipe) => void
   onToggleFavorite?: (id: string) => void
+  onEdit?: (recipe: Recipe) => void
+  onDelete?: (id: string) => void
 }
 
-export function RecipeCard({ recipe, mealType, onAdd, onToggleFavorite }: Props) {
+export function RecipeCard({ recipe, mealType, onAdd, onToggleFavorite, onEdit, onDelete }: Props) {
   const c = useColors()
   const [expanded, setExpanded] = useState(false)
+  const confirmDeleteRef = useRef<BottomSheetModal>(null)
 
   const categoryColor = CATEGORY_COLORS[recipe.category](c)
   const categoryIcon = CATEGORY_ICONS[recipe.category]
@@ -249,6 +254,27 @@ export function RecipeCard({ recipe, mealType, onAdd, onToggleFavorite }: Props)
               </View>
             )}
 
+            {(onEdit || onDelete) && (
+              <View style={tw`flex-row gap-2`}>
+                {onEdit && (
+                  <Button
+                    label="Modifier"
+                    variant="warning"
+                    onPress={() => onEdit(recipe)}
+                    style={tw`flex-1`}
+                  />
+                )}
+                {onDelete && (
+                  <Button
+                    label="Supprimer"
+                    variant="danger"
+                    onPress={() => confirmDeleteRef.current?.present()}
+                    style={tw`flex-1`}
+                  />
+                )}
+              </View>
+            )}
+
             {mealType && onAdd && (
               <Button
                 label={`Ajouter à ${mealType}`}
@@ -259,6 +285,16 @@ export function RecipeCard({ recipe, mealType, onAdd, onToggleFavorite }: Props)
             )}
           </View>
         </View>
+      )}
+      {onDelete && (
+        <ConfirmModal
+          ref={confirmDeleteRef}
+          title="Supprimer la recette"
+          message={`Supprimer « ${recipe.name} » ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          variant="danger"
+          onConfirm={() => onDelete(recipe.id)}
+        />
       )}
     </View>
   )

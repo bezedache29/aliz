@@ -3,7 +3,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet'
 import { useRouter } from 'expo-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
 import { MealItemEditSheet } from '@/src/features/planning/MealItemEditSheet'
 
 import { ScrollView } from '@/src/components/scroll-view'
@@ -18,6 +18,7 @@ import dayjs from '@/src/config/dayjs'
 import { MealAddPickerSheet } from '@/src/features/planning/MealAddPickerSheet'
 import { MealSlot } from '@/src/features/planning/MealSlot'
 import { useColors } from '@/src/hooks/use-colors'
+import { useRefresh } from '@/src/hooks/use-refresh'
 import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
 import { weekPlanAtom } from '@/src/store/planningAtom'
@@ -87,6 +88,8 @@ export default function JournalScreen() {
   const weightTrendIcon = weightTrendIcons[weightTrend]
   const weightTrendColor = weightTrendColors[weightTrend]
 
+  const { refreshing, refresh } = useRefresh()
+
   const handleAddMeal = useCallback((meal: MealType) => {
     setActiveMeal(meal)
     pickerSheetRef.current?.present()
@@ -115,7 +118,13 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      <ScrollView contentContainerStyle={tw`p-4 gap-4`} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={tw`p-4 gap-4`}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
+        }
+      >
         <View style={tw`gap-1`}>
           <Text variant="heading1">
             {onboarding.firstName ? `Bonjour, ${onboarding.firstName} !` : 'Bonjour !'}

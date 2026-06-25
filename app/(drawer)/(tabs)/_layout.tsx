@@ -52,9 +52,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="fridge"
         options={{
-          title: 'Frigo',
+          title: 'Provisions',
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? 'fast-food' : 'fast-food-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'basket' : 'basket-outline'} size={22} color={color} />
           ),
         }}
       />

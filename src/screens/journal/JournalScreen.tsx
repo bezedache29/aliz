@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
+import { MealItemEditSheet } from '@/src/features/planning/MealItemEditSheet'
 
 import { ScrollView } from '@/src/components/scroll-view'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -38,7 +39,9 @@ export default function JournalScreen() {
   const onboarding = useAtomValue(onboardingAtom)
   const [weekPlan, setWeekPlan] = useAtom(weekPlanAtom)
   const pickerSheetRef = useRef<BottomSheetModal>(null)
+  const editItemSheetRef = useRef<BottomSheetModal>(null)
   const [activeMeal, setActiveMeal] = useState<MealType | null>(null)
+  const [editingItem, setEditingItem] = useState<PlannedMeal | null>(null)
 
   const todayKey = dayjs().format('YYYY-MM-DD')
   const todayMeals: PlannedMeal[] = weekPlan[todayKey] ?? []
@@ -89,11 +92,25 @@ export default function JournalScreen() {
     pickerSheetRef.current?.present()
   }, [])
 
-  function handleRemoveMeal(meal: MealType) {
+  function handlePressItem(item: PlannedMeal) {
+    setEditingItem(item)
+    editItemSheetRef.current?.present()
+  }
+
+  function handleUpdateItem(updated: PlannedMeal) {
     setWeekPlan((prev) => ({
       ...prev,
-      [todayKey]: (prev[todayKey] ?? []).filter((m) => m.meal !== meal),
+      [todayKey]: (prev[todayKey] ?? []).map((m) => (m.id === updated.id ? updated : m)),
     }))
+    editItemSheetRef.current?.dismiss()
+  }
+
+  function handleDeleteItem(id: string) {
+    setWeekPlan((prev) => ({
+      ...prev,
+      [todayKey]: (prev[todayKey] ?? []).filter((m) => m.id !== id),
+    }))
+    editItemSheetRef.current?.dismiss()
   }
 
   return (
@@ -228,9 +245,9 @@ export default function JournalScreen() {
               <MealSlot
                 key={meal}
                 meal={meal}
-                planned={todayMeals.find((m) => m.meal === meal)}
+                plannedItems={todayMeals.filter((m) => m.meal === meal)}
                 onAdd={() => handleAddMeal(meal)}
-                onRemove={() => handleRemoveMeal(meal)}
+                onPressItem={handlePressItem}
                 showSeparator={index < MEAL_ORDER.length - 1}
               />
             ))}
@@ -345,6 +362,14 @@ export default function JournalScreen() {
           pickerSheetRef.current?.dismiss()
           if (activeMeal) router.push(`/recipe-search?mealType=${encodeURIComponent(activeMeal)}`)
         }}
+      />
+
+      <MealItemEditSheet
+        ref={editItemSheetRef}
+        item={editingItem}
+        mealType={editingItem?.meal ?? 'Déjeuner'}
+        onSave={handleUpdateItem}
+        onDelete={handleDeleteItem}
       />
     </SafeAreaView>
   )

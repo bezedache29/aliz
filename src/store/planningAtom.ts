@@ -7,5 +7,8 @@ import { atomWithMMKV } from './atomWithMMKV'
 
 export const selectedDateAtom = atom<Dayjs>(dayjs())
 
-// Record<YYYY-MM-DD, PlannedMeal[]>
-export const weekPlanAtom = atomWithMMKV<Record<string, PlannedMeal[]>>('week_plan', {})
+// TODO(backend): remplacer par useQuery/useMutation vers GET|POST /journal/entries
+// Lire : GET /journal/entries?date=YYYY-MM-DD → PlannedMeal[]
+// Écrire : POST /journal/entries { date, meal } → PlannedMeal
+// Supprimer : DELETE /journal/entries/:id
+export const weekPlanAtom = atomWithMMKV<Record<string, PlannedMeal[]>>('journal_plan', {})

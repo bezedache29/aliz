@@ -13,102 +13,150 @@ const MEAL_ICONS: Record<MealType, React.ComponentProps<typeof Ionicons>['name']
   Dîner: 'moon-outline',
 }
 
+const MEAL_COLORS: Record<MealType, (c: ReturnType<typeof useColors>) => string> = {
+  'Petit-déjeuner': (c) => c.warning,
+  Déjeuner: (c) => c.primary,
+  Collation: (c) => c.tertiary,
+  Dîner: (c) => c.info,
+}
+
 type MealSlotProps = {
   meal: MealType
-  planned?: PlannedMeal
+  plannedItems: PlannedMeal[]
   onAdd: () => void
-  onRemove: () => void
+  onPressItem: (item: PlannedMeal) => void
   showSeparator?: boolean
 }
 
-export function MealSlot({ meal, planned, onAdd, onRemove, showSeparator = true }: MealSlotProps) {
+export function MealSlot({
+  meal,
+  plannedItems,
+  onAdd,
+  onPressItem,
+  showSeparator = true,
+}: MealSlotProps) {
   const c = useColors()
+  const mealColor = MEAL_COLORS[meal](c)
+
+  const totalKcal = plannedItems.reduce((sum, m) => sum + m.kcal, 0)
+  const totalP = plannedItems.reduce((sum, m) => sum + m.proteines, 0)
+  const totalG = plannedItems.reduce((sum, m) => sum + m.glucides, 0)
+  const totalL = plannedItems.reduce((sum, m) => sum + m.lipides, 0)
 
   return (
     <>
-      <View style={tw`flex-row items-center gap-4 py-2`}>
-        {/* Icône cercle */}
+      {/* Header */}
+      <View style={tw`flex-row items-center gap-4 py-3`}>
         <View
           style={[
-            tw`w-12 h-12 rounded-full border items-center justify-center shrink-0`,
-            { backgroundColor: c.surfaceElevated, borderColor: c.border },
+            tw`w-11 h-11 rounded-full items-center justify-center shrink-0`,
+            { backgroundColor: mealColor + '20' },
           ]}
         >
-          <Ionicons
-            name={MEAL_ICONS[meal]}
-            size={20}
-            color={planned ? c.primary : c.textSecondary}
-          />
+          <Ionicons name={MEAL_ICONS[meal]} size={20} color={mealColor} />
         </View>
 
-        {/* Contenu central */}
         <View style={tw`flex-1 gap-0.5`}>
           <Text variant="body" style={{ fontWeight: '700' }}>
             {meal}
           </Text>
-          {planned ? (
-            <>
-              <Text variant="caption" color="accent" style={{ fontWeight: '600' }}>
-                {planned.kcal} kcal
-              </Text>
-              <Text variant="caption" color="secondary" numberOfLines={1}>
-                {planned.name}
-              </Text>
-              <View style={tw`flex-row gap-1 mt-0.5`}>
-                <MacroPill label="P" value={planned.proteines} color={c.info} />
-                <MacroPill label="G" value={planned.glucides} color={c.warning} />
-                <MacroPill label="L" value={planned.lipides} color={c.tertiary} />
-              </View>
-            </>
-          ) : (
+          {plannedItems.length === 0 ? (
             <Text variant="caption" color="muted">
-              Aucun repas planifié
+              Aucun aliment ajouté
             </Text>
+          ) : (
+            <View style={tw`flex-row items-center gap-1`}>
+              <Ionicons name="flame" size={13} color={c.primary} />
+              <Text variant="caption" style={{ fontWeight: '700', color: c.primary }}>
+                {totalKcal}
+              </Text>
+              <Text variant="caption" color="muted">
+                kcal
+              </Text>
+              <Text variant="caption" color="muted">
+                · P{Math.round(totalP)}g G{Math.round(totalG)}g L{Math.round(totalL)}g
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Action bouton */}
-        {planned ? (
-          <TouchableOpacity
-            testID="remove-button"
-            onPress={onRemove}
-            hitSlop={8}
-            style={[
-              tw`w-8 h-8 rounded-full items-center justify-center shrink-0`,
-              { backgroundColor: c.surfaceElevated },
-            ]}
-          >
-            <Ionicons name="close" size={16} color={c.textSecondary} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity testID="add-button" onPress={onAdd} activeOpacity={0.8}>
-            <View
-              style={[
-                tw`w-10 h-10 rounded-full items-center justify-center shrink-0`,
-                { backgroundColor: c.primary },
-              ]}
-            >
-              <Ionicons name="add" size={22} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          testID="add-button"
+          onPress={onAdd}
+          activeOpacity={0.8}
+          style={[
+            tw`w-9 h-9 rounded-full items-center justify-center shrink-0`,
+            { backgroundColor: c.primary },
+          ]}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
-      {showSeparator && (
+      {/* Items list */}
+      {plannedItems.map((item, index) => (
+        <View key={item.id}>
+          {index === 0 && (
+            <View
+              style={{
+                height: StyleSheet.hairlineWidth,
+                backgroundColor: c.border,
+                marginLeft: 60,
+              }}
+            />
+          )}
+          <TouchableOpacity
+            testID="meal-item"
+            onPress={() => onPressItem(item)}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingVertical: 10,
+              paddingLeft: 60,
+            }}
+          >
+            <View style={tw`flex-1`}>
+              <Text variant="body" numberOfLines={1}>
+                {item.name}
+              </Text>
+              <View style={tw`flex-row items-center gap-1.5`}>
+                {item.quantityG != null && (
+                  <>
+                    <Text variant="caption" color="muted">
+                      {item.quantityG}g
+                    </Text>
+                    <Text variant="caption" color="muted">
+                      ·
+                    </Text>
+                  </>
+                )}
+                <Ionicons name="flame" size={11} color={c.primary} />
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  {item.kcal}
+                </Text>
+                <Text variant="caption" color="muted">
+                  kcal
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={c.textMuted} style={tw`mr-1`} />
+          </TouchableOpacity>
+          <View
+            style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginLeft: 60 }}
+          />
+        </View>
+      ))}
+
+      {showSeparator && plannedItems.length === 0 && (
         <View
           style={[tw`ml-16`, { height: StyleSheet.hairlineWidth, backgroundColor: c.border }]}
         />
       )}
+      {showSeparator && plannedItems.length > 0 && (
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border }} />
+      )}
     </>
-  )
-}
-
-function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <View style={[tw`py-0.5 px-1.5 rounded-lg`, { backgroundColor: color + '35' }]}>
-      <Text variant="caption" style={{ color, fontWeight: '600' }}>
-        {label} {value}g
-      </Text>
-    </View>
   )
 }

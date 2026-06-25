@@ -14,97 +14,111 @@ const mockMeal: PlannedMeal = {
   meal: 'Petit-déjeuner',
 }
 
+const mockMeal2: PlannedMeal = {
+  id: '2',
+  name: 'Yaourt nature',
+  kcal: 80,
+  proteines: 5,
+  glucides: 10,
+  lipides: 2,
+  meal: 'Petit-déjeuner',
+}
+
 describe('MealSlot', () => {
   describe('slot vide', () => {
     it('affiche le nom du repas', async () => {
       const { getByText } = await render(
-        <MealSlot meal="Petit-déjeuner" onAdd={jest.fn()} onRemove={jest.fn()} />,
+        <MealSlot
+          meal="Petit-déjeuner"
+          plannedItems={[]}
+          onAdd={jest.fn()}
+          onPressItem={jest.fn()}
+        />,
       )
       expect(getByText('Petit-déjeuner')).toBeTruthy()
     })
 
-    it('affiche le placeholder "Aucun repas planifié"', async () => {
+    it('affiche le placeholder "Aucun aliment ajouté"', async () => {
       const { getByText } = await render(
-        <MealSlot meal="Déjeuner" onAdd={jest.fn()} onRemove={jest.fn()} />,
+        <MealSlot meal="Déjeuner" plannedItems={[]} onAdd={jest.fn()} onPressItem={jest.fn()} />,
       )
-      expect(getByText('Aucun repas planifié')).toBeTruthy()
+      expect(getByText('Aucun aliment ajouté')).toBeTruthy()
     })
 
-    it('appelle onAdd au press du bouton +', async () => {
+    it('affiche toujours le bouton +', async () => {
       const onAdd = jest.fn()
       const { getByTestId } = await render(
-        <MealSlot meal="Petit-déjeuner" onAdd={onAdd} onRemove={jest.fn()} />,
+        <MealSlot meal="Petit-déjeuner" plannedItems={[]} onAdd={onAdd} onPressItem={jest.fn()} />,
       )
       fireEvent.press(getByTestId('add-button'))
       expect(onAdd).toHaveBeenCalledTimes(1)
     })
-
-    it("n'affiche pas le bouton supprimer", async () => {
-      const { queryByTestId } = await render(
-        <MealSlot meal="Collation" onAdd={jest.fn()} onRemove={jest.fn()} />,
-      )
-      expect(queryByTestId('remove-button')).toBeNull()
-    })
   })
 
   describe('slot rempli', () => {
-    it('affiche le nom de la recette', async () => {
+    it('affiche le nom de chaque aliment', async () => {
       const { getByText } = await render(
         <MealSlot
           meal="Petit-déjeuner"
-          planned={mockMeal}
+          plannedItems={[mockMeal]}
           onAdd={jest.fn()}
-          onRemove={jest.fn()}
+          onPressItem={jest.fn()}
         />,
       )
       expect(getByText('Omelette aux légumes')).toBeTruthy()
     })
 
-    it('affiche les calories', async () => {
+    it('affiche le total des calories dans le header', async () => {
       const { getByText } = await render(
         <MealSlot
           meal="Petit-déjeuner"
-          planned={mockMeal}
+          plannedItems={[mockMeal, mockMeal2]}
           onAdd={jest.fn()}
-          onRemove={jest.fn()}
+          onPressItem={jest.fn()}
         />,
       )
-      expect(getByText('456 kcal')).toBeTruthy()
+      // total kcal = 456 + 80 = 536
+      expect(getByText('536')).toBeTruthy()
     })
 
-    it('affiche les trois macros', async () => {
-      const { getByText } = await render(
+    it('appelle onPressItem avec le bon item au press', async () => {
+      const onPressItem = jest.fn()
+      const { getAllByTestId } = await render(
         <MealSlot
           meal="Petit-déjeuner"
-          planned={mockMeal}
+          plannedItems={[mockMeal, mockMeal2]}
           onAdd={jest.fn()}
-          onRemove={jest.fn()}
+          onPressItem={onPressItem}
         />,
       )
-      expect(getByText('P 32g')).toBeTruthy()
-      expect(getByText('G 12g')).toBeTruthy()
-      expect(getByText('L 28g')).toBeTruthy()
+      fireEvent.press(getAllByTestId('meal-item')[0])
+      expect(onPressItem).toHaveBeenCalledWith(mockMeal)
     })
 
-    it('appelle onRemove au press du bouton ×', async () => {
-      const onRemove = jest.fn()
+    it('affiche toujours le bouton + même avec des items', async () => {
+      const onAdd = jest.fn()
       const { getByTestId } = await render(
-        <MealSlot meal="Petit-déjeuner" planned={mockMeal} onAdd={jest.fn()} onRemove={onRemove} />,
+        <MealSlot
+          meal="Petit-déjeuner"
+          plannedItems={[mockMeal]}
+          onAdd={onAdd}
+          onPressItem={jest.fn()}
+        />,
       )
-      fireEvent.press(getByTestId('remove-button'))
-      expect(onRemove).toHaveBeenCalledTimes(1)
+      fireEvent.press(getByTestId('add-button'))
+      expect(onAdd).toHaveBeenCalledTimes(1)
     })
 
-    it("n'affiche pas le placeholder", async () => {
+    it("n'affiche pas le placeholder quand des items sont présents", async () => {
       const { queryByText } = await render(
         <MealSlot
           meal="Petit-déjeuner"
-          planned={mockMeal}
+          plannedItems={[mockMeal]}
           onAdd={jest.fn()}
-          onRemove={jest.fn()}
+          onPressItem={jest.fn()}
         />,
       )
-      expect(queryByText('Aucun repas planifié')).toBeNull()
+      expect(queryByText('Aucun aliment ajouté')).toBeNull()
     })
   })
 })

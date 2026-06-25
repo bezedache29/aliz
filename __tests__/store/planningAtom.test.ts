@@ -29,7 +29,7 @@ describe('selectedDateAtom', () => {
   })
 })
 
-describe('weekPlanAtom', () => {
+describe('weekPlanAtom — journal des repas consommés', () => {
   it('initialise avec un objet vide', () => {
     const store = createStore()
     expect(store.get(weekPlanAtom)).toEqual({})
@@ -50,7 +50,6 @@ describe('weekPlanAtom', () => {
       '2026-01-16': [meal2],
     })
     expect(store.get(weekPlanAtom)['2026-01-15']).toHaveLength(1)
-    expect(store.get(weekPlanAtom)['2026-01-16']).toHaveLength(1)
     expect(store.get(weekPlanAtom)['2026-01-16'][0].meal).toBe('Déjeuner')
   })
 

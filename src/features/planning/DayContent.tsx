@@ -1,102 +1,145 @@
-import { useAtom, useAtomValue } from 'jotai'
+import { BottomSheetModal } from '@gorhom/bottom-sheet'
+import { useAtomValue } from 'jotai'
+import { useRef, useState } from 'react'
 import { RefreshControl, View } from 'react-native'
-
-import { ScrollView } from '@/src/components/scroll-view'
 import tw from 'twrnc'
 
-import { Card } from '@/src/components/card'
+import { usePlanningWeek } from '@/src/apis/backendApi/hooks/planning/usePlanningWeek'
+import { useRegenerateMealSlot } from '@/src/apis/backendApi/hooks/planning/useRegenerateMealSlot'
+import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { useRefresh } from '@/src/hooks/use-refresh'
-import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
-import { selectedDateAtom, weekPlanAtom } from '@/src/store/planningAtom'
+import type { MealType } from '@/src/models/planning/planning.model'
+import { selectedDateAtom } from '@/src/store/planningAtom'
 
-import { MealSlot } from './MealSlot'
+import { MealEditSheet } from './MealEditSheet'
+import { RecipeSlot } from './RecipeSlot'
 
 const MEAL_ORDER: MealType[] = ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Dîner']
 
 export function DayContent() {
   const c = useColors()
   const selectedDate = useAtomValue(selectedDateAtom)
-  const [weekPlan, setWeekPlan] = useAtom(weekPlanAtom)
-
   const { refreshing, refresh } = useRefresh()
 
+  const sheetRef = useRef<BottomSheetModal>(null)
+  const [activeMeal, setActiveMeal] = useState<MealType | null>(null)
+  const [regeneratingMeals, setRegeneratingMeals] = useState<Set<MealType>>(new Set())
+
   const dateKey = selectedDate.format('YYYY-MM-DD')
-  const dayMeals: PlannedMeal[] = weekPlan[dateKey] ?? []
-  const totalKcal = dayMeals.reduce((sum, m) => sum + m.kcal, 0)
-
-  const getMealForSlot = (meal: MealType) => dayMeals.find((m) => m.meal === meal)
-
-  function handleRemove(meal: MealType) {
-    setWeekPlan((prev) => ({
-      ...prev,
-      [dateKey]: (prev[dateKey] ?? []).filter((m) => m.meal !== meal),
-    }))
-  }
-
   const dayName = selectedDate.format('dddd').toUpperCase()
   const dayDate = selectedDate.format('D MMMM')
-  const dayDateCapitalized = dayDate.charAt(0).toUpperCase() + dayDate.slice(1)
+
+  const { data: slots = [], isLoading } = usePlanningWeek(dateKey)
+  const regenerateMutation = useRegenerateMealSlot()
+
+  function handleSlotPress(meal: MealType) {
+    setActiveMeal(meal)
+    sheetRef.current?.present()
+  }
+
+  function handleRegenerate() {
+    if (!activeMeal) return
+    sheetRef.current?.dismiss()
+    setRegeneratingMeals((prev) => new Set([...prev, activeMeal]))
+    regenerateMutation.mutate(
+      { dateKey, mealType: activeMeal },
+      {
+        onSettled: () => {
+          setRegeneratingMeals((prev) => {
+            const next = new Set(prev)
+            next.delete(activeMeal)
+            return next
+          })
+        },
+      },
+    )
+  }
+
+  function handleSendPrompt(prompt: string) {
+    if (!activeMeal) return
+    sheetRef.current?.dismiss()
+    setRegeneratingMeals((prev) => new Set([...prev, activeMeal]))
+    regenerateMutation.mutate(
+      { dateKey, mealType: activeMeal, prompt },
+      {
+        onSettled: () => {
+          setRegeneratingMeals((prev) => {
+            const next = new Set(prev)
+            next.delete(activeMeal)
+            return next
+          })
+        },
+      },
+    )
+  }
+
+  const activeSlot = slots.find((s) => s.meal === activeMeal)
 
   return (
-    <ScrollView
-      style={tw`flex-1`}
-      contentContainerStyle={tw`p-4 gap-2 pb-8`}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={refresh}
-          tintColor={c.primary}
-          colors={[c.primary]}
-        />
-      }
-    >
-      {/* En-tête du jour */}
-      <View style={tw`mb-2 gap-0.5`}>
-        <Text variant="label" color="muted" uppercase style={{ letterSpacing: 1 }}>
-          {dayName}
-        </Text>
-        <Text variant="heading1" style={{ lineHeight: 34 }}>
-          {dayDateCapitalized}
-        </Text>
-      </View>
-
-      {/* Section repas */}
-      <Text variant="label" color="muted" uppercase style={[tw`mb-1 mt-1`, { letterSpacing: 0.8 }]}>
-        Alimentation
-      </Text>
-
-      <Card noPadding style={tw`px-4`}>
-        {MEAL_ORDER.map((meal, index) => (
-          <MealSlot
-            key={meal}
-            meal={meal}
-            planned={getMealForSlot(meal)}
-            onAdd={() => {}}
-            onRemove={() => handleRemove(meal)}
-            showSeparator={index < MEAL_ORDER.length - 1}
+    <>
+      <ScrollView
+        style={tw`flex-1`}
+        contentContainerStyle={tw`p-4 gap-2 pb-8`}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={c.primary}
+            colors={[c.primary]}
           />
-        ))}
-      </Card>
-
-      {/* Total kcal */}
-      {totalKcal > 0 && (
-        <View
-          style={[
-            tw`flex-row justify-between items-center mt-1 p-4 rounded-xl border`,
-            { backgroundColor: c.surface, borderColor: c.border },
-          ]}
-        >
-          <Text variant="label" color="muted" uppercase style={{ letterSpacing: 0.5 }}>
-            Total du jour
+        }
+      >
+        <View style={tw`mb-2 gap-0.5`}>
+          <Text variant="label" color="muted" uppercase style={{ letterSpacing: 1 }}>
+            {dayName}
           </Text>
-          <Text variant="heading3" color="accent" style={{ fontWeight: '700' }}>
-            {totalKcal} kcal
+          <Text variant="heading1" style={{ lineHeight: 34 }}>
+            {dayDate}
           </Text>
         </View>
-      )}
-    </ScrollView>
+
+        <Text
+          variant="label"
+          color="muted"
+          uppercase
+          style={[tw`mb-1 mt-1`, { letterSpacing: 0.8 }]}
+        >
+          {"Suggestions de l'IA"}
+        </Text>
+
+        <View
+          style={[
+            tw`rounded-2xl overflow-hidden px-4`,
+            { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+          ]}
+        >
+          {MEAL_ORDER.map((meal, index) => {
+            const slot = slots.find((s) => s.meal === meal)
+            const isRegenerating = regeneratingMeals.has(meal)
+            return (
+              <RecipeSlot
+                key={meal}
+                meal={meal}
+                status={isLoading || isRegenerating ? 'loading' : (slot?.status ?? 'idle')}
+                recipe={slot?.recipe}
+                onPress={() => handleSlotPress(meal)}
+                showSeparator={index < MEAL_ORDER.length - 1}
+              />
+            )
+          })}
+        </View>
+      </ScrollView>
+
+      <MealEditSheet
+        ref={sheetRef}
+        mealType={activeMeal ?? 'Déjeuner'}
+        recipeName={activeSlot?.recipe?.name}
+        onRegenerate={handleRegenerate}
+        onSendPrompt={handleSendPrompt}
+      />
+    </>
   )
 }

@@ -25,7 +25,7 @@ export function Badge({ label, variant = 'neutral', style, ...props }: BadgeProp
 
   return (
     <View
-      style={[tw`rounded-full py-1 px-2 self-start`, { backgroundColor: v.bg }, style]}
+      style={[tw`rounded-full py-1 px-2 self-center`, { backgroundColor: v.bg }, style]}
       {...props}
     >
       <Text variant="label" uppercase style={{ color: v.text }}>

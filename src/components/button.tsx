@@ -4,7 +4,7 @@ import tw from 'twrnc'
 import { useColors } from '@/src/hooks/use-colors'
 import { Text } from './text'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'warning'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 type ButtonProps = PressableProps & {
@@ -38,6 +38,7 @@ export function Button({
     secondary: { bg: c.surface, text: c.textPrimary, border: c.border },
     ghost: { bg: 'transparent', text: c.textPrimary, border: 'transparent' },
     danger: { bg: c.danger, text: '#FFFFFF', border: 'transparent' },
+    warning: { bg: c.warning, text: '#FFFFFF', border: 'transparent' },
   }
 
   const v = variantStyles[variant]

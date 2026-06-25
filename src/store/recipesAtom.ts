@@ -22,6 +22,10 @@ export function toggleFavorite(prev: Recipe[], id: string): Recipe[] {
   return prev.map((r) => (r.id === id ? { ...r, isFavorite: !r.isFavorite } : r))
 }
 
+export function updateRecipe(prev: Recipe[], updated: Recipe): Recipe[] {
+  return prev.map((r) => (r.id === updated.id ? updated : r))
+}
+
 export function searchRecipes(recipes: Recipe[], query: string): Recipe[] {
   if (!query.trim()) return recipes
   const q = query.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')

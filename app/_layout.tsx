@@ -81,6 +81,7 @@ export default function RootLayout() {
                 <Stack.Screen name="food-search" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-search" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-create" options={{ headerShown: false }} />
+                <Stack.Screen name="provision-add" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style="auto" />
             </BottomSheetModalProvider>

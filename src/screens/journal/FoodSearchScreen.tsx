@@ -7,6 +7,7 @@ import {
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useAtom, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -16,6 +17,7 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   TextInput,
   TouchableOpacity,
@@ -26,9 +28,11 @@ import tw from 'twrnc'
 import { z } from 'zod'
 
 import { Button } from '@/src/components/button'
+import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import { isCiqualLoaded } from '@/src/apis/ciqualApi/client'
 import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch'
+import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
 import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
 import dayjs from '@/src/config/dayjs'
 import { useColors } from '@/src/hooks/use-colors'
@@ -86,13 +90,19 @@ const SOURCES: {
   },
 ]
 
+function isValidFood(f: FoodProduct): boolean {
+  return f.id != null && typeof f.per100g?.kcal === 'number'
+}
+
 function calcMacros(food: FoodProduct, grams: number) {
+  const per100g = food.per100g
+  if (!per100g) return { kcal: 0, proteines: 0, glucides: 0, lipides: 0 }
   const f = grams / 100
   return {
-    kcal: Math.round(food.per100g.kcal * f),
-    proteines: Math.round(food.per100g.proteines * f * 10) / 10,
-    glucides: Math.round(food.per100g.glucides * f * 10) / 10,
-    lipides: Math.round(food.per100g.lipides * f * 10) / 10,
+    kcal: Math.round(per100g.kcal * f),
+    proteines: Math.round(per100g.proteines * f * 10) / 10,
+    glucides: Math.round(per100g.glucides * f * 10) / 10,
+    lipides: Math.round(per100g.lipides * f * 10) / 10,
   }
 }
 
@@ -152,7 +162,9 @@ function FoodItem({
             )}
           </View>
           <Text variant="caption" color="secondary" numberOfLines={1}>
-            {[item.brand, `${item.per100g.kcal} kcal/100g`].filter(Boolean).join(' · ')}
+            {[item.brand, item.per100g ? `${item.per100g.kcal} kcal/100g` : null]
+              .filter(Boolean)
+              .join(' · ')}
           </Text>
         </View>
         <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={16} color={c.textMuted} />
@@ -206,13 +218,237 @@ function FoodItem({
   )
 }
 
+function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  secondaryAction,
+  c,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name']
+  title: string
+  description?: string
+  action?: { label: string; onPress: () => void }
+  secondaryAction?: { label: string; onPress: () => void }
+  c: ReturnType<typeof useColors>
+}) {
+  return (
+    <View style={tw`px-4 pt-6 gap-3 items-center`}>
+      <View
+        style={[
+          tw`w-11 h-11 rounded-2xl items-center justify-center`,
+          { backgroundColor: c.surfaceElevated },
+        ]}
+      >
+        <Ionicons name={icon} size={20} color={c.textMuted} />
+      </View>
+      <View style={tw`gap-1 items-center`}>
+        <Text variant="body" style={{ fontWeight: '700' }}>
+          {title}
+        </Text>
+        {description ? (
+          <Text variant="caption" color="secondary" style={tw`text-center`}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      {action ? (
+        <View style={tw`self-stretch`}>
+          <Button label={action.label} onPress={action.onPress} fullWidth />
+        </View>
+      ) : null}
+      {secondaryAction ? (
+        <TouchableOpacity onPress={secondaryAction.onPress} hitSlop={8}>
+          <Text variant="caption" color="muted" style={{ textDecorationLine: 'underline' }}>
+            {secondaryAction.label}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )
+}
+
+function MacroChip({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={tw`items-center flex-1`}>
+      <Text style={{ fontWeight: '700', fontSize: 17, color }}>{value}g</Text>
+      <Text variant="caption" style={{ color, opacity: 0.75 }}>
+        {label}
+      </Text>
+    </View>
+  )
+}
+
+function BarcodeFoodCard({
+  food,
+  quantityStr,
+  onChangeQuantity,
+  onAdd,
+  c,
+}: {
+  food: FoodProduct
+  quantityStr: string
+  onChangeQuantity: (v: string) => void
+  onAdd: () => void
+  c: ReturnType<typeof useColors>
+}) {
+  const grams = parseFloat(quantityStr.replace(',', '.')) || 0
+  const preview = grams > 0 ? calcMacros(food, grams) : null
+
+  return (
+    <View
+      style={[
+        tw`rounded-2xl overflow-hidden`,
+        { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+      ]}
+    >
+      {/* Header produit */}
+      <View
+        style={[
+          tw`flex-row items-center gap-3 p-4`,
+          { borderBottomWidth: 1, borderBottomColor: c.border },
+        ]}
+      >
+        <View
+          style={[
+            tw`w-12 h-12 rounded-2xl items-center justify-center shrink-0`,
+            { backgroundColor: c.primary + '20' },
+          ]}
+        >
+          <Ionicons name="nutrition-outline" size={24} color={c.primary} />
+        </View>
+        <View style={tw`flex-1`}>
+          <Text variant="body" style={{ fontWeight: '700' }} numberOfLines={2}>
+            {food.name}
+          </Text>
+          <View style={tw`flex-row items-center flex-wrap gap-1 mt-0.5`}>
+            {food.brand && (
+              <>
+                <Text variant="caption" color="secondary">
+                  {food.brand}
+                </Text>
+                <Text variant="caption" color="muted">
+                  ·
+                </Text>
+              </>
+            )}
+            <Text variant="caption" color="muted">
+              OpenFoodFacts
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Valeurs pour 100g */}
+      <View style={tw`p-4 gap-3`}>
+        <Text variant="label" color="muted" uppercase>
+          Valeurs pour 100g
+        </Text>
+        <View style={tw`flex-row gap-3`}>
+          <View
+            style={[
+              tw`rounded-2xl p-3 items-center justify-center`,
+              { backgroundColor: c.primary + '15', minWidth: 88 },
+            ]}
+          >
+            <Text style={{ fontSize: 32, fontWeight: '800', color: c.primary, lineHeight: 36 }}>
+              {food.per100g?.kcal ?? 0}
+            </Text>
+            <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+              kcal
+            </Text>
+          </View>
+          <View style={[tw`flex-1 justify-center gap-2`]}>
+            {(
+              [
+                { label: 'Protéines', value: food.per100g?.proteines ?? 0, color: c.info },
+                { label: 'Glucides', value: food.per100g?.glucides ?? 0, color: c.warning },
+                { label: 'Lipides', value: food.per100g?.lipides ?? 0, color: c.tertiary },
+              ] as const
+            ).map(({ label, value, color }) => (
+              <View key={label} style={tw`flex-row items-center gap-2`}>
+                <View style={[tw`w-2 h-2 rounded-full shrink-0`, { backgroundColor: color }]} />
+                <Text variant="caption" color="secondary" style={tw`flex-1`}>
+                  {label}
+                </Text>
+                <Text variant="caption" style={{ fontWeight: '700', color: c.textPrimary }}>
+                  {value}g
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+
+      {/* Quantité + preview */}
+      <View style={[tw`px-4 pb-4 gap-3`, { borderTopWidth: 1, borderTopColor: c.border }]}>
+        <Text variant="label" color="muted" uppercase style={tw`mt-3`}>
+          Quantité consommée
+        </Text>
+        <View style={tw`flex-row gap-3`}>
+          <View
+            style={[
+              tw`flex-1 flex-row items-center rounded-xl px-4`,
+              {
+                backgroundColor: c.surfaceElevated,
+                borderWidth: 1,
+                borderColor: c.border,
+                height: 44,
+              },
+            ]}
+          >
+            <TextInput
+              value={quantityStr}
+              onChangeText={onChangeQuantity}
+              keyboardType="numeric"
+              selectTextOnFocus
+              style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
+            />
+            <Text variant="body" color="muted">
+              g
+            </Text>
+          </View>
+          {preview && (
+            <View
+              style={[
+                tw`px-4 rounded-xl items-center justify-center`,
+                { backgroundColor: c.primary + '15', minWidth: 88 },
+              ]}
+            >
+              <Text style={{ fontWeight: '800', color: c.primary, fontSize: 18, lineHeight: 22 }}>
+                {preview.kcal}
+              </Text>
+              <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                kcal
+              </Text>
+            </View>
+          )}
+        </View>
+        {preview && (
+          <View style={[tw`flex-row rounded-xl p-3`, { backgroundColor: c.surfaceElevated }]}>
+            <MacroChip label="Protéines" value={preview.proteines} color={c.info} />
+            <View style={[tw`w-px`, { backgroundColor: c.border }]} />
+            <MacroChip label="Glucides" value={preview.glucides} color={c.warning} />
+            <View style={[tw`w-px`, { backgroundColor: c.border }]} />
+            <MacroChip label="Lipides" value={preview.lipides} color={c.tertiary} />
+          </View>
+        )}
+        <Button label="Ajouter" fullWidth onPress={onAdd} />
+      </View>
+    </View>
+  )
+}
+
 export default function FoodSearchScreen() {
   const router = useRouter()
   const { mealType, context } = useLocalSearchParams<{ mealType: string; context: string }>()
   const c = useColors()
   const setWeekPlan = useSetAtom(weekPlanAtom)
-  const [recentFoods, setRecentFoods] = useAtom(recentFoodsAtom)
-  const [customFoods, setCustomFoods] = useAtom(customFoodsAtom)
+  const [recentFoodsRaw, setRecentFoods] = useAtom(recentFoodsAtom)
+  const [customFoodsRaw, setCustomFoods] = useAtom(customFoodsAtom)
+  const recentFoods = recentFoodsRaw.filter((f) => typeof f.per100g?.kcal === 'number')
+  const customFoods = customFoodsRaw.filter((f) => typeof f.per100g?.kcal === 'number')
   const setPendingIngredient = useSetAtom(pendingIngredientAtom)
   const isRecipeMode = context === 'recipe'
   const todayKey = dayjs().format('YYYY-MM-DD')
@@ -223,10 +459,19 @@ export default function FoodSearchScreen() {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedFood, setSelectedFood] = useState<FoodProduct | null>(null)
   const [quantityStr, setQuantityStr] = useState('100')
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
+  const [editableBarcode, setEditableBarcode] = useState('')
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions()
 
   const sourceSheetRef = useRef<BottomSheetModal>(null)
   const addFoodSheetRef = useRef<BottomSheetModal>(null)
   const searchInputRef = useRef<TextInput>(null)
+
+  const {
+    data: barcodeFood,
+    isFetching: barcodeFetching,
+    isError: barcodeError,
+  } = useFoodByBarcode(scannedBarcode)
 
   const {
     control,
@@ -250,6 +495,16 @@ export default function FoodSearchScreen() {
     }
   }, [mode])
 
+  useEffect(() => {
+    if (mode === 'barcode' && cameraPermission !== null && !cameraPermission.granted) {
+      requestCameraPermission()
+    }
+  }, [mode, cameraPermission])
+
+  useEffect(() => {
+    if (scannedBarcode) setEditableBarcode(scannedBarcode)
+  }, [scannedBarcode])
+
   const {
     data: offResults = [],
     isFetching: offFetching,
@@ -270,7 +525,7 @@ export default function FoodSearchScreen() {
           (cf) => !apiResults.some((r) => r.id === cf.id),
         )
       : []
-  const searchResults = [...matchingCustomFoods, ...apiResults]
+  const searchResults = [...matchingCustomFoods, ...apiResults].filter(isValidFood)
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -284,6 +539,7 @@ export default function FoodSearchScreen() {
     setMode(m)
     setSelectedFood(null)
     setQuery('')
+    setScannedBarcode(null)
   }
 
   function handleSourceChange(source: FoodSource) {
@@ -331,43 +587,64 @@ export default function FoodSearchScreen() {
         name: food.brand ? `${food.name} (${food.brand})` : food.name,
         meal: mealType as MealType,
         ...macros,
+        quantityG: data.quantite,
+        per100g: food.per100g,
       }
       setWeekPlan((prev) => ({
         ...prev,
         [todayKey]: [...(prev[todayKey] ?? []), meal],
       }))
-      setRecentFoods((prev) => addToRecent(prev, food))
+      setRecentFoods((prev) => addToRecent(prev, { ...food, per100g: { ...food.per100g } }))
     }
     addFoodSheetRef.current?.dismiss()
     reset()
     router.back()
   }
 
-  function handleAdd() {
-    if (!selectedFood) return
+  function handleAdd(overrideFood?: FoodProduct) {
+    const rawFood = overrideFood ?? selectedFood
+    if (!rawFood) return
+    // Construction explicite pour exclure toute propriété interne React/React Query
+    const food: FoodProduct = {
+      id: rawFood.id,
+      name: rawFood.name,
+      source: rawFood.source,
+      per100g: {
+        kcal: rawFood.per100g.kcal,
+        proteines: rawFood.per100g.proteines,
+        glucides: rawFood.per100g.glucides,
+        lipides: rawFood.per100g.lipides,
+        ...(rawFood.per100g.fibres != null ? { fibres: rawFood.per100g.fibres } : {}),
+        ...(rawFood.per100g.sel != null ? { sel: rawFood.per100g.sel } : {}),
+      },
+      ...(rawFood.barcode != null ? { barcode: rawFood.barcode } : {}),
+      ...(rawFood.brand != null ? { brand: rawFood.brand } : {}),
+    }
     const grams = parseFloat(quantityStr.replace(',', '.')) || 100
 
     if (isRecipeMode) {
-      setPendingIngredient({ food: selectedFood, quantityG: grams })
+      setPendingIngredient({ food, quantityG: grams })
       router.back()
       return
     }
 
     if (!mealType) return
-    const macros = calcMacros(selectedFood, grams)
+    const macros = calcMacros(food, grams)
 
     const meal: PlannedMeal = {
-      id: `${Date.now()}-${selectedFood.id}`,
-      name: selectedFood.brand ? `${selectedFood.name} (${selectedFood.brand})` : selectedFood.name,
+      id: `${Date.now()}-${food.id}`,
+      name: food.brand ? `${food.name} (${food.brand})` : food.name,
       meal: mealType as MealType,
       ...macros,
+      quantityG: grams,
+      per100g: food.per100g,
     }
 
     setWeekPlan((prev) => ({
       ...prev,
       [todayKey]: [...(prev[todayKey] ?? []), meal],
     }))
-    setRecentFoods((prev) => addToRecent(prev, selectedFood))
+    setRecentFoods((prev) => addToRecent(prev, food))
     router.back()
   }
 
@@ -376,12 +653,14 @@ export default function FoodSearchScreen() {
   const preview = selectedFood && grams > 0 ? calcMacros(selectedFood, grams) : null
   const isLoading = isFetching && debouncedQuery.trim().length >= 2
 
-  const filteredRecent = query.trim()
-    ? recentFoods.filter((f) => {
-        const q = query.toLowerCase()
-        return f.name.toLowerCase().includes(q) || f.brand?.toLowerCase().includes(q)
-      })
-    : recentFoods
+  const filteredRecent = (
+    query.trim()
+      ? recentFoods.filter((f) => {
+          const q = query.toLowerCase()
+          return f.name?.toLowerCase().includes(q) || f.brand?.toLowerCase().includes(q)
+        })
+      : recentFoods
+  ).filter(isValidFood)
 
   const foodItemProps = {
     quantityStr,
@@ -487,19 +766,19 @@ export default function FoodSearchScreen() {
         {/* Contenu selon le mode */}
         {mode === 'favorites' ? (
           recentFoods.length === 0 ? (
-            <View style={tw`items-center px-8 pt-6 gap-2`}>
-              <Ionicons name="star-outline" size={40} color={c.textMuted} />
-              <Text variant="body" color="muted" style={tw`text-center`}>
-                Les aliments que tu ajoutes apparaîtront ici.
-              </Text>
-            </View>
+            <EmptyState
+              icon="star-outline"
+              title="Aucun aliment récent"
+              description="Les aliments que tu ajoutes apparaîtront ici."
+              c={c}
+            />
           ) : filteredRecent.length === 0 ? (
-            <View style={tw`items-center px-8 pt-6 gap-2`}>
-              <Ionicons name="search-outline" size={40} color={c.textMuted} />
-              <Text variant="body" color="muted" style={tw`text-center`}>
-                Aucun résultat pour « {query} »
-              </Text>
-            </View>
+            <EmptyState
+              icon="search-outline"
+              title="Aucun résultat"
+              description={`Aucun récent correspondant à « ${query} ».`}
+              c={c}
+            />
           ) : (
             <FlatList
               data={filteredRecent}
@@ -517,44 +796,185 @@ export default function FoodSearchScreen() {
             />
           )
         ) : mode === 'barcode' ? (
-          <View style={tw`items-center px-8 pt-6 gap-2`}>
-            <Ionicons name="barcode-outline" size={40} color={c.textMuted} />
-            <Text variant="body" color="muted" style={tw`text-center`}>
-              Scanner un code-barre — bientôt disponible.
-            </Text>
+          <View style={tw`flex-1`}>
+            {cameraPermission === null ? (
+              <View style={tw`px-4 pt-8 items-center`}>
+                <ActivityIndicator color={c.primary} />
+              </View>
+            ) : !cameraPermission.granted ? (
+              <EmptyState
+                icon="camera-outline"
+                title="Accès caméra requis"
+                description="L'accès à la caméra est nécessaire pour scanner un code-barres."
+                action={{ label: 'Autoriser la caméra', onPress: requestCameraPermission }}
+                secondaryAction={{
+                  label: 'Gérer dans les réglages',
+                  onPress: () => Linking.openSettings(),
+                }}
+                c={c}
+              />
+            ) : scannedBarcode && barcodeFetching ? (
+              <View style={tw`px-4 pt-8 items-center gap-2`}>
+                <ActivityIndicator color={c.primary} size="large" />
+                <Text variant="caption" color="muted">
+                  Recherche du produit...
+                </Text>
+              </View>
+            ) : scannedBarcode && barcodeError ? (
+              <EmptyState
+                icon="cloud-offline-outline"
+                title="Connexion impossible"
+                description="Impossible de contacter OpenFoodFacts. Vérifie ta connexion."
+                action={{ label: 'Re-scanner', onPress: () => setScannedBarcode(null) }}
+                c={c}
+              />
+            ) : scannedBarcode && !barcodeFetching && barcodeFood === null ? (
+              <View style={tw`px-4 pt-6 gap-4`}>
+                {/* Header */}
+                <View style={tw`items-center gap-3`}>
+                  <View
+                    style={[
+                      tw`w-11 h-11 rounded-2xl items-center justify-center`,
+                      { backgroundColor: c.surfaceElevated },
+                    ]}
+                  >
+                    <Ionicons name="help-circle-outline" size={20} color={c.textMuted} />
+                  </View>
+                  <View style={tw`gap-1 items-center`}>
+                    <Text variant="body" style={{ fontWeight: '700' }}>
+                      Produit introuvable
+                    </Text>
+                    <Text variant="caption" color="secondary" style={tw`text-center`}>
+                      {"Ce code-barres n'existe pas dans OpenFoodFacts."}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action principale */}
+                <Button label="Re-scanner" fullWidth onPress={() => setScannedBarcode(null)} />
+
+                {/* Séparateur */}
+                <View style={tw`flex-row items-center gap-3`}>
+                  <View style={[tw`flex-1 h-px`, { backgroundColor: c.border }]} />
+                  <Text variant="caption" color="muted">
+                    ou corriger le code
+                  </Text>
+                  <View style={[tw`flex-1 h-px`, { backgroundColor: c.border }]} />
+                </View>
+
+                {/* Correction du code-barres */}
+                <View style={tw`gap-2`}>
+                  <View
+                    style={[
+                      tw`flex-row items-center rounded-xl px-4`,
+                      {
+                        backgroundColor: c.surfaceElevated,
+                        borderWidth: 1,
+                        borderColor: c.border,
+                        height: 48,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="barcode-outline"
+                      size={18}
+                      color={c.textMuted}
+                      style={tw`mr-2`}
+                    />
+                    <TextInput
+                      value={editableBarcode}
+                      onChangeText={setEditableBarcode}
+                      keyboardType="number-pad"
+                      selectTextOnFocus
+                      placeholder="Code-barres"
+                      placeholderTextColor={c.textMuted}
+                      style={[
+                        tw`flex-1 text-base`,
+                        { color: c.textPrimary, fontFamily: 'monospace' },
+                      ]}
+                    />
+                  </View>
+                  <Button
+                    variant="secondary"
+                    label="Rechercher ce code"
+                    fullWidth
+                    onPress={() => {
+                      const trimmed = editableBarcode.trim()
+                      if (trimmed) setScannedBarcode(trimmed)
+                    }}
+                  />
+                </View>
+              </View>
+            ) : scannedBarcode && barcodeFood ? (
+              <ScrollView contentContainerStyle={tw`px-4 pt-2 pb-4 gap-3`}>
+                <BarcodeFoodCard
+                  food={barcodeFood}
+                  quantityStr={quantityStr}
+                  onChangeQuantity={setQuantityStr}
+                  onAdd={() => handleAdd(barcodeFood)}
+                  c={c}
+                />
+                <Button
+                  variant="secondary"
+                  label="Re-scanner"
+                  fullWidth
+                  onPress={() => setScannedBarcode(null)}
+                />
+              </ScrollView>
+            ) : (
+              <View style={tw`flex-1`}>
+                <CameraView
+                  style={tw`flex-1`}
+                  facing="back"
+                  barcodeScannerSettings={{
+                    barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'],
+                  }}
+                  onBarcodeScanned={({ data }) => {
+                    if (!scannedBarcode) setScannedBarcode(data)
+                  }}
+                />
+                <View
+                  style={[tw`absolute top-0 left-0 right-0 bottom-0 items-center justify-center`]}
+                  pointerEvents="none"
+                >
+                  <View
+                    style={[tw`w-64 h-32 rounded-2xl`, { borderWidth: 2, borderColor: c.primary }]}
+                  />
+                  <Text
+                    variant="body"
+                    style={[tw`mt-4 text-center`, { color: '#FFFFFF', fontWeight: '600' }]}
+                  >
+                    Pointez le code-barres
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         ) : activeSource === 'ciqual' && !isCiqualLoaded ? (
-          <View style={tw`items-center px-8 pt-6 gap-2`}>
-            <Ionicons name="flask-outline" size={40} color={c.textMuted} />
-            <Text variant="body" color="muted" style={tw`text-center`}>
-              Base CIQUAL non chargée.
-            </Text>
-            <Text variant="caption" color="muted" style={tw`text-center`}>
-              Lance{'\n'}
-              <Text variant="caption" style={{ fontFamily: 'monospace', color: c.textSecondary }}>
-                python3 scripts/generate-ciqual.py
-              </Text>
-              {'\n'}puis redémarre Expo.
-            </Text>
-          </View>
+          <EmptyState
+            icon="flask-outline"
+            title="Base CIQUAL non chargée"
+            description={`Lance python3 scripts/generate-ciqual.py puis redémarre Expo.`}
+            c={c}
+          />
         ) : isLoading ? (
-          <View style={tw`flex-1 items-center justify-center`}>
+          <View style={tw`px-4 pt-8 items-center`}>
             <ActivityIndicator color={c.primary} size="large" />
           </View>
         ) : isError ? (
-          <View style={tw`items-center px-8 pt-6 gap-2`}>
-            <Ionicons name="cloud-offline-outline" size={40} color={c.textMuted} />
-            <Text variant="body" color="muted" style={tw`text-center`}>
-              Impossible de contacter {activeSourceDef.label}. Vérifie ta connexion.
-            </Text>
-          </View>
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Connexion impossible"
+            description={`Impossible de contacter ${activeSourceDef.label}. Vérifie ta connexion.`}
+            c={c}
+          />
         ) : searchResults.length === 0 && debouncedQuery.trim() ? (
-          <View style={tw`items-center px-8 pt-6 gap-2`}>
-            <Ionicons name="search-outline" size={40} color={c.textMuted} />
-            <Text variant="body" color="muted" style={tw`text-center`}>
-              Aucun résultat pour « {debouncedQuery} »
-            </Text>
-          </View>
+          <EmptyState
+            icon="search-outline"
+            title="Aucun résultat"
+            description={`Aucun aliment correspondant à « ${debouncedQuery} ».`}
+            c={c}
+          />
         ) : (
           <FlatList
             data={searchResults}

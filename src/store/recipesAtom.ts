@@ -3,6 +3,11 @@ import { Recipe } from '@/src/models/recipe/recipe.model'
 
 import { atomWithMMKV } from './atomWithMMKV'
 
+// TODO(backend): remplacer par useQuery/useMutation vers GET|POST /recipes
+// Lire : GET /recipes → Recipe[]
+// Créer : POST /recipes { name, ingredients, ... } → Recipe
+// Supprimer : DELETE /recipes/:id
+// MOCK_RECIPES sera supprimé une fois le backend câblé
 export const recipesAtom = atomWithMMKV<Recipe[]>('recipes', MOCK_RECIPES)
 
 export function addRecipe(prev: Recipe[], recipe: Recipe): Recipe[] {

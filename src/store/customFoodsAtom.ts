@@ -1,6 +1,10 @@
 import { FoodProduct } from '@/src/models/food/food.model'
 import { atomWithMMKV } from './atomWithMMKV'
 
+// TODO(backend): remplacer par useQuery/useMutation vers GET|POST /foods/custom
+// Lire : GET /foods/custom → FoodProduct[]
+// Créer : POST /foods/custom { name, brand?, per100g } → FoodProduct
+// Supprimer : DELETE /foods/custom/:id
 export const customFoodsAtom = atomWithMMKV<FoodProduct[]>('custom_foods', [])
 
 export function addCustomFood(prev: FoodProduct[], food: FoodProduct): FoodProduct[] {

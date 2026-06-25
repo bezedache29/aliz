@@ -7,11 +7,12 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import * as ExpoSplash from 'expo-splash-screen'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react'
+import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
+import { CustomSplash } from '@/src/components/custom-splash'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 
 const queryClient = new QueryClient({
@@ -66,10 +67,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme()
-
-  useEffect(() => {
-    ExpoSplash.hideAsync()
-  }, [])
+  const [splashVisible, setSplashVisible] = useState(true)
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -89,6 +87,7 @@ export default function RootLayout() {
           </ThemeProvider>
         </ErrorBoundary>
       </QueryClientProvider>
+      {splashVisible && <CustomSplash onFinished={() => setSplashVisible(false)} />}
     </GestureHandlerRootView>
   )
 }

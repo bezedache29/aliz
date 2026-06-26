@@ -3,11 +3,26 @@ import type {
   ProfileDTO,
   UpdateProfileDTO,
 } from '@/src/apis/backendApi/dto/profile/profile.dto'
+import type { Profile } from '@/src/models/profile/profile.model'
 import type { ActivityLevel } from '@/src/models/user/user.model'
 import type { OnboardingData } from '@/src/store/onboardingAtom'
 
-export function profileDTOtoOnboardingData(
-  dto: ProfileDTO,
+export function profileDTOtoProfile(dto: ProfileDTO): Profile {
+  return {
+    id: dto.id,
+    firstName: dto.firstName,
+    age: dto.age,
+    gender: dto.gender,
+    heightCm: dto.heightCm,
+    currentWeightKg: dto.currentWeightKg,
+    targetWeightKg: dto.targetWeightKg,
+    activityLevel: dto.activityLevel as ActivityLevel,
+    weightLossRateKg: dto.weightLossRateKg,
+  }
+}
+
+export function profileToOnboardingData(
+  profile: Profile,
 ): Pick<
   OnboardingData,
   | 'firstName'
@@ -20,17 +35,17 @@ export function profileDTOtoOnboardingData(
   | 'weeklyLossKg'
 > {
   return {
-    firstName: dto.firstName,
-    age: dto.age,
-    sex: dto.gender,
-    height: dto.heightCm,
-    activityLevel: dto.activityLevel as ActivityLevel,
-    currentWeight: dto.currentWeightKg,
-    targetWeight: dto.targetWeightKg,
+    firstName: profile.firstName,
+    age: profile.age,
+    sex: profile.gender,
+    height: profile.heightCm,
+    activityLevel: profile.activityLevel,
+    currentWeight: profile.currentWeightKg,
+    targetWeight: profile.targetWeightKg,
     weeklyLossKg:
-      dto.weightLossRateKg === 0.25 || dto.weightLossRateKg === 0.75
+      profile.weightLossRateKg === 0.25 || profile.weightLossRateKg === 0.75
         ? 0.5
-        : (dto.weightLossRateKg as 0.5 | 1),
+        : (profile.weightLossRateKg as 0.5 | 1),
   }
 }
 

@@ -4,6 +4,7 @@ import React from 'react'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
 import type { ProfileDTO } from '@/src/apis/backendApi/dto/profile/profile.dto'
+import type { Profile } from '@/src/models/profile/profile.model'
 
 import { backendClient } from '@/src/apis/backendApi/client'
 
@@ -49,11 +50,22 @@ const profileDTO: ProfileDTO = {
 }
 
 describe('useProfile', () => {
-  it('retourne le profil en cas de succès', async () => {
+  it('retourne le profil mappé en cas de succès', async () => {
     mockedGet.mockResolvedValueOnce({ data: { data: profileDTO } })
     const { result } = await renderHook(() => useProfile(), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toEqual(profileDTO)
+    const expected: Profile = {
+      id: 'p-1',
+      firstName: 'Christophe',
+      age: 43,
+      gender: 'male',
+      heightCm: 178,
+      currentWeightKg: 85.5,
+      targetWeightKg: 75,
+      activityLevel: 'moderate',
+      weightLossRateKg: 0.5,
+    }
+    expect(result.current.data).toEqual(expected)
   })
 
   it('retourne null en cas de 404', async () => {

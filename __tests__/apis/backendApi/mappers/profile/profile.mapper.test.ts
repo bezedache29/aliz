@@ -2,7 +2,8 @@ import type { ProfileDTO } from '@/src/apis/backendApi/dto/profile/profile.dto'
 import {
   onboardingDataToCreateDTO,
   onboardingDataToUpdateDTO,
-  profileDTOtoOnboardingData,
+  profileDTOtoProfile,
+  profileToOnboardingData,
 } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import type { OnboardingData } from '@/src/store/onboardingAtom'
 
@@ -33,9 +34,31 @@ const onboardingData: OnboardingData = {
   weeklyLossKg: 0.5,
 }
 
-describe('profileDTOtoOnboardingData', () => {
+describe('profileDTOtoProfile', () => {
+  it('mappe tous les champs correctement', () => {
+    const result = profileDTOtoProfile(profileDTO)
+    expect(result.id).toBe('p-1')
+    expect(result.firstName).toBe('Christophe')
+    expect(result.age).toBe(43)
+    expect(result.gender).toBe('male')
+    expect(result.heightCm).toBe(178)
+    expect(result.currentWeightKg).toBe(85.5)
+    expect(result.targetWeightKg).toBe(75)
+    expect(result.activityLevel).toBe('moderate')
+    expect(result.weightLossRateKg).toBe(0.5)
+  })
+
+  it('mappe gender female correctement', () => {
+    const result = profileDTOtoProfile({ ...profileDTO, gender: 'female' })
+    expect(result.gender).toBe('female')
+  })
+})
+
+describe('profileToOnboardingData', () => {
+  const profile = profileDTOtoProfile(profileDTO)
+
   it('mappe tous les champs principaux correctement', () => {
-    const result = profileDTOtoOnboardingData(profileDTO)
+    const result = profileToOnboardingData(profile)
     expect(result.firstName).toBe('Christophe')
     expect(result.age).toBe(43)
     expect(result.height).toBe(178)
@@ -45,47 +68,32 @@ describe('profileDTOtoOnboardingData', () => {
   })
 
   it('renomme gender → sex', () => {
-    const result = profileDTOtoOnboardingData(profileDTO)
+    const result = profileToOnboardingData(profile)
     expect(result.sex).toBe('male')
   })
 
-  it('renomme heightCm → height', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, heightCm: 165 })
-    expect(result.height).toBe(165)
-  })
-
-  it('renomme currentWeightKg → currentWeight', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, currentWeightKg: 70 })
-    expect(result.currentWeight).toBe(70)
-  })
-
-  it('renomme targetWeightKg → targetWeight', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, targetWeightKg: 65 })
-    expect(result.targetWeight).toBe(65)
-  })
-
   it('mappe weightLossRateKg 0.5 → 0.5', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, weightLossRateKg: 0.5 })
+    const result = profileToOnboardingData({ ...profile, weightLossRateKg: 0.5 })
     expect(result.weeklyLossKg).toBe(0.5)
   })
 
   it('mappe weightLossRateKg 1.0 → 1', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, weightLossRateKg: 1.0 })
+    const result = profileToOnboardingData({ ...profile, weightLossRateKg: 1.0 })
     expect(result.weeklyLossKg).toBe(1)
   })
 
   it('mappe weightLossRateKg 0.25 → 0.5 (fallback)', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, weightLossRateKg: 0.25 })
+    const result = profileToOnboardingData({ ...profile, weightLossRateKg: 0.25 })
     expect(result.weeklyLossKg).toBe(0.5)
   })
 
   it('mappe weightLossRateKg 0.75 → 0.5 (fallback)', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, weightLossRateKg: 0.75 })
+    const result = profileToOnboardingData({ ...profile, weightLossRateKg: 0.75 })
     expect(result.weeklyLossKg).toBe(0.5)
   })
 
   it('mappe gender female correctement', () => {
-    const result = profileDTOtoOnboardingData({ ...profileDTO, gender: 'female' })
+    const result = profileToOnboardingData({ ...profile, gender: 'female' })
     expect(result.sex).toBe('female')
   })
 })

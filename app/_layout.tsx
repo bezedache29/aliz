@@ -14,7 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
-import { profileDTOtoOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
+import { profileToOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { CustomSplash } from '@/src/components/custom-splash'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
@@ -27,7 +27,7 @@ function ProfileSync() {
     if (!profile) return
     setOnboarding((prev) => {
       if (prev.completed) return prev
-      return { ...prev, ...profileDTOtoOnboardingData(profile), completed: true }
+      return { ...prev, ...profileToOnboardingData(profile), completed: true }
     })
   }, [profile, setOnboarding])
 

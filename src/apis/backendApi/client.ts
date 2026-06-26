@@ -8,6 +8,7 @@ export const backendClient = applyCaseMiddleware(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      Authorization: `Bearer ${process.env.EXPO_PUBLIC_API_TOKEN}`,
     },
   }),
 )

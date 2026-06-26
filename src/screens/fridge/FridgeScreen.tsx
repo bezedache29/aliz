@@ -7,7 +7,9 @@ import {
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
 import { useRouter } from 'expo-router'
-import { useAtom } from 'jotai'
+import { useDeleteStock } from '@/src/apis/backendApi/hooks/stock/useDeleteStock'
+import { useStock } from '@/src/apis/backendApi/hooks/stock/useStock'
+import { useUpdateStock } from '@/src/apis/backendApi/hooks/stock/useUpdateStock'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
@@ -38,7 +40,6 @@ import {
   StockItemState,
   getExpiryStatus,
 } from '@/src/models/stock/stock-item.model'
-import { provisionsAtom, removeProvision, updateProvision } from '@/src/store/provisionsAtom'
 
 type EditForm = {
   quantity: string
@@ -51,8 +52,10 @@ type EditForm = {
 export default function FridgeScreen() {
   const c = useColors()
   const router = useRouter()
-  const { refreshing, refresh } = useRefresh()
-  const [provisions, setProvisions] = useAtom(provisionsAtom)
+  const { data: provisions = [], refetch } = useStock()
+  const { mutate: deleteStock } = useDeleteStock()
+  const { mutate: updateStock } = useUpdateStock()
+  const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<StockCategory | null>(null)
@@ -103,7 +106,7 @@ export default function FridgeScreen() {
   }, [filteredProvisions])
 
   function handleDelete(id: string) {
-    setProvisions((prev) => removeProvision(prev, id))
+    deleteStock(id)
   }
 
   function handleEdit(item: StockItem) {
@@ -127,17 +130,17 @@ export default function FridgeScreen() {
     const qty = parseFloat(editForm.quantity)
     if (isNaN(qty) || qty <= 0) return
 
-    setProvisions((prev) =>
-      updateProvision(prev, {
+    updateStock(
+      {
         ...editItem,
         quantity: qty,
         unit: editForm.unit,
         category: editForm.category,
         state: editForm.itemState || undefined,
         expiryDate: editForm.expiryDate ?? undefined,
-      }),
+      },
+      { onSuccess: () => editSheetRef.current?.dismiss() },
     )
-    editSheetRef.current?.dismiss()
   }
 
   const renderBackdrop = useCallback(

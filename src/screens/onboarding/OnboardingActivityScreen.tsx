@@ -34,6 +34,11 @@ const LEVELS: { value: ActivityLevel; label: string; description: string }[] = [
     label: 'Très actif',
     description: 'Travail physique, beaucoup de mouvement au quotidien',
   },
+  {
+    value: 'very_active',
+    label: 'Extrêmement actif',
+    description: 'Sport intensif tous les jours, travail physique extrême',
+  },
 ]
 
 export default function OnboardingActivityScreen() {

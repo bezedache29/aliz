@@ -9,11 +9,6 @@ import {
 import type { Recipe } from '@/src/models/recipe/recipe.model'
 
 async function fetchUpdateRecipe(recipe: Recipe): Promise<Recipe> {
-  if (!process.env.EXPO_PUBLIC_API_URL) {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return recipe
-  }
-
   const { data } = await backendClient.put<RecipeDTO>(
     `/api/recipes/${recipe.id}`,
     recipeToUpdateDTO(recipe),
@@ -26,10 +21,9 @@ export function useUpdateRecipe() {
   return useMutation({
     mutationFn: fetchUpdateRecipe,
     onSuccess: (updated) => {
-      queryClient.setQueryData<Recipe[]>(['recipes'], (prev) => {
-        if (!prev) return [updated]
-        return prev.map((r) => (r.id === updated.id ? updated : r))
-      })
+      queryClient.setQueryData<Recipe[]>(['recipes'], (prev) =>
+        prev ? prev.map((r) => (r.id === updated.id ? updated : r)) : [updated],
+      )
     },
   })
 }

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useAtom, useSetAtom } from 'jotai'
+import { useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
 import {
   FlatList,
@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useRecipes } from '@/src/apis/backendApi/hooks/recipes/useRecipes'
+import { useUpdateRecipe } from '@/src/apis/backendApi/hooks/recipes/useUpdateRecipe'
 import { Badge } from '@/src/components/badge'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
@@ -37,7 +39,15 @@ import {
   computeRecipeNutrition,
 } from '@/src/models/recipe/recipe.model'
 import { weekPlanAtom } from '@/src/store/planningAtom'
-import { recipesAtom, searchRecipes, toggleFavorite } from '@/src/store/recipesAtom'
+
+function searchRecipes(recipes: Recipe[], query: string): Recipe[] {
+  if (!query.trim()) return recipes
+  const q = query.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return recipes.filter((r) => {
+    const name = r.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    return name.includes(q)
+  })
+}
 
 const CATEGORY_ORDER: RecipeCategory[] = [
   'Petit-déjeuner',
@@ -80,7 +90,8 @@ export default function RecipeSearchScreen() {
   const router = useRouter()
   const { mealType } = useLocalSearchParams<{ mealType: string }>()
 
-  const [recipes, setRecipes] = useAtom(recipesAtom)
+  const { data: recipes = [] } = useRecipes()
+  const { mutate: updateRecipe } = useUpdateRecipe()
   const setWeekPlan = useSetAtom(weekPlanAtom)
   const todayKey = dayjs().format('YYYY-MM-DD')
 
@@ -162,7 +173,8 @@ export default function RecipeSearchScreen() {
   }
 
   function handleToggleFavorite(id: string) {
-    setRecipes((prev) => toggleFavorite(prev, id))
+    const recipe = recipes.find((r) => r.id === id)
+    if (recipe) updateRecipe({ ...recipe, isFavorite: !recipe.isFavorite })
   }
 
   const isEmpty = categoryList !== null ? categoryList.length === 0 : sections.length === 0

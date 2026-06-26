@@ -1,20 +1,23 @@
-import { act, renderHook } from '@testing-library/react-native'
+import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { notifyManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 
 import { useDeleteRecipe } from '@/src/apis/backendApi/hooks/recipes/useDeleteRecipe'
 import type { Recipe } from '@/src/models/recipe/recipe.model'
 
+import { backendClient } from '@/src/apis/backendApi/client'
+
+jest.mock('@/src/apis/backendApi/client', () => ({
+  backendClient: { delete: jest.fn() },
+}))
+const mockedDelete = backendClient.delete as jest.Mock
+
 beforeAll(() => {
   notifyManager.setScheduler(queueMicrotask)
 })
 
-beforeEach(() => {
-  jest.useFakeTimers({ legacyFakeTimers: false })
-})
-
 afterEach(() => {
-  jest.useRealTimers()
+  jest.clearAllMocks()
 })
 
 function makeWrapper(queryClient: QueryClient) {
@@ -25,10 +28,7 @@ function makeWrapper(queryClient: QueryClient) {
 
 function makeQueryClient() {
   return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false },
-    },
+    defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
   })
 }
 
@@ -49,8 +49,9 @@ const r2: Recipe = {
   isFavorite: false,
 }
 
-describe('useDeleteRecipe (mock mode)', () => {
-  it('removes the recipe from the query cache', async () => {
+describe('useDeleteRecipe', () => {
+  it('retire la recette du cache après suppression', async () => {
+    mockedDelete.mockResolvedValueOnce({ data: {} })
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [r1, r2])
 
@@ -58,20 +59,18 @@ describe('useDeleteRecipe (mock mode)', () => {
       wrapper: makeWrapper(queryClient),
     })
 
-    const mutatePromise = result.current.mutateAsync('recipe-1')
     await act(async () => {
-      await jest.runAllTimersAsync()
-    })
-    await act(async () => {
-      await mutatePromise
+      await result.current.mutateAsync('recipe-1')
     })
 
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const cached = queryClient.getQueryData<Recipe[]>(['recipes'])
     expect(cached).toHaveLength(1)
     expect(cached![0].id).toBe('recipe-2')
   })
 
-  it('does not affect other recipes', async () => {
+  it('ne touche pas aux autres recettes', async () => {
+    mockedDelete.mockResolvedValueOnce({ data: {} })
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [r1, r2])
 
@@ -79,19 +78,17 @@ describe('useDeleteRecipe (mock mode)', () => {
       wrapper: makeWrapper(queryClient),
     })
 
-    const mutatePromise = result.current.mutateAsync('recipe-1')
     await act(async () => {
-      await jest.runAllTimersAsync()
-    })
-    await act(async () => {
-      await mutatePromise
+      await result.current.mutateAsync('recipe-1')
     })
 
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const cached = queryClient.getQueryData<Recipe[]>(['recipes'])
     expect(cached![0].name).toBe('Poulet')
   })
 
-  it('handles deletion of an unknown id gracefully', async () => {
+  it("gère la suppression d'un id inconnu sans crash", async () => {
+    mockedDelete.mockResolvedValueOnce({ data: {} })
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [r1])
 
@@ -99,15 +96,26 @@ describe('useDeleteRecipe (mock mode)', () => {
       wrapper: makeWrapper(queryClient),
     })
 
-    const mutatePromise = result.current.mutateAsync('inexistant')
     await act(async () => {
-      await jest.runAllTimersAsync()
-    })
-    await act(async () => {
-      await mutatePromise
+      await result.current.mutateAsync('inexistant')
     })
 
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const cached = queryClient.getQueryData<Recipe[]>(['recipes'])
     expect(cached).toHaveLength(1)
+  })
+
+  it("passe en état error en cas d'échec", async () => {
+    mockedDelete.mockRejectedValueOnce(new Error('Network error'))
+    const queryClient = makeQueryClient()
+    const { result } = await renderHook(() => useDeleteRecipe(), {
+      wrapper: makeWrapper(queryClient),
+    })
+
+    await act(async () => {
+      result.current.mutate('recipe-1')
+    })
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
   })
 })

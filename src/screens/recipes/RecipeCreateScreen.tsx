@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
-import { useAtom, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, View } from 'react-native'
@@ -9,23 +9,22 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
 
+import { useCreateRecipe } from '@/src/apis/backendApi/hooks/recipes/useCreateRecipe'
 import { Button } from '@/src/components/button'
 import { Input } from '@/src/components/input'
 import { Text } from '@/src/components/text'
+import { COOKING_METHOD_ICONS, SEASON_ICONS } from '@/src/features/recipes/RecipeCard'
 import { useColors } from '@/src/hooks/use-colors'
 import {
   RECIPE_CATEGORIES,
   RECIPE_COOKING_METHODS,
   RECIPE_SEASONS,
-  Recipe,
   RecipeCategory,
   RecipeCookingMethod,
   RecipeIngredient,
   RecipeSeason,
   computeRecipeNutrition,
 } from '@/src/models/recipe/recipe.model'
-import { COOKING_METHOD_ICONS, SEASON_ICONS } from '@/src/features/recipes/RecipeCard'
-import { addRecipe, recipesAtom } from '@/src/store/recipesAtom'
 import { pendingIngredientAtom } from '@/src/store/pendingIngredientAtom'
 
 function toNum(v: string | number | undefined): number {
@@ -61,7 +60,7 @@ type RecipeForm = z.infer<typeof recipeSchema>
 export default function RecipeCreateScreen() {
   const c = useColors()
   const router = useRouter()
-  const setRecipes = useSetAtom(recipesAtom)
+  const { mutate: createRecipe, isPending } = useCreateRecipe()
   const [pendingIngredient, setPendingIngredient] = useAtom(pendingIngredientAtom)
 
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
@@ -111,20 +110,21 @@ export default function RecipeCreateScreen() {
       setIngredientError(true)
       return
     }
-    const recipe: Recipe = {
-      id: `recipe-${Date.now()}`,
-      name: data.name,
-      category: data.category as RecipeCategory,
-      ingredients,
-      steps: data.steps.map((s) => s.value).filter(Boolean),
-      prepTime: data.prepTime,
-      cookTime: data.cookTime,
-      servings: data.servings ?? 1,
-      seasons: data.seasons?.length ? (data.seasons as RecipeSeason[]) : undefined,
-      cookingMethod: data.cookingMethod as RecipeCookingMethod | undefined,
-    }
-    setRecipes((prev) => addRecipe(prev, recipe))
-    router.back()
+    createRecipe(
+      {
+        name: data.name,
+        category: data.category as RecipeCategory,
+        ingredients,
+        steps: data.steps.map((s) => s.value).filter(Boolean),
+        prepTime: data.prepTime,
+        cookTime: data.cookTime,
+        servings: data.servings ?? 1,
+        seasons: data.seasons?.length ? (data.seasons as RecipeSeason[]) : undefined,
+        cookingMethod: data.cookingMethod as RecipeCookingMethod | undefined,
+        isFavorite: false,
+      },
+      { onSuccess: () => router.back() },
+    )
   }
 
   return (
@@ -434,9 +434,10 @@ export default function RecipeCreateScreen() {
           </View>
 
           <Button
-            label="Enregistrer la recette"
+            label={isPending ? 'Enregistrement…' : 'Enregistrer la recette'}
             variant="primary"
             fullWidth
+            disabled={isPending}
             onPress={handleSubmit(handleSave)}
           />
         </ScrollView>

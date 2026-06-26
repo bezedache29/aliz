@@ -1,7 +1,6 @@
-import { Dayjs } from 'dayjs'
-
 export interface WeightEntry {
-  date: Dayjs
+  id: string
+  date: string
   weight: number
   bodyFatPercentage?: number
   muscleMass?: number

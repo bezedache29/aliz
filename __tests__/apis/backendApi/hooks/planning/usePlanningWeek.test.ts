@@ -1,8 +1,16 @@
-import { act, renderHook } from '@testing-library/react-native'
+import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { notifyManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 
 import { usePlanningWeek } from '@/src/apis/backendApi/hooks/planning/usePlanningWeek'
+import type { PlanningWeekResponseDTO } from '@/src/apis/backendApi/dto/planning/planning.dto'
+
+import { backendClient } from '@/src/apis/backendApi/client'
+
+jest.mock('@/src/apis/backendApi/client', () => ({
+  backendClient: { get: jest.fn() },
+}))
+const mockedGet = backendClient.get as jest.Mock
 
 beforeAll(() => {
   notifyManager.setScheduler(queueMicrotask)
@@ -14,54 +22,52 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers()
+  jest.clearAllMocks()
 })
 
-function makeWrapper(queryClient: QueryClient) {
+function makeWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
+  })
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 }
 
-describe('usePlanningWeek (mock mode)', () => {
-  let queryClient: QueryClient
+const mockRecipe = {
+  id: 'r-1',
+  name: 'Salade',
+  kcal: 350,
+  proteines: 20,
+  glucides: 30,
+  lipides: 10,
+}
 
-  beforeEach(() => {
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  })
+const planningResponse: PlanningWeekResponseDTO = {
+  meals: [
+    { mealType: 'Petit-déjeuner', recipe: mockRecipe },
+    { mealType: 'Déjeuner', recipe: mockRecipe },
+    { mealType: 'Collation', recipe: mockRecipe },
+    { mealType: 'Dîner', recipe: mockRecipe },
+  ],
+}
 
-  afterEach(() => {
-    queryClient.clear()
-  })
-
-  it('returns 4 slots after loading', async () => {
+describe('usePlanningWeek', () => {
+  it('retourne 4 slots après chargement', async () => {
+    mockedGet.mockResolvedValueOnce({ data: planningResponse })
     const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
-      wrapper: makeWrapper(queryClient),
+      wrapper: makeWrapper(),
     })
-    await act(async () => {
-      jest.advanceTimersByTime(1000)
-    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(result.current.data).toHaveLength(4)
   })
 
-  it('all slots have status done', async () => {
+  it('couvre les 4 types de repas', async () => {
+    mockedGet.mockResolvedValueOnce({ data: planningResponse })
     const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
-      wrapper: makeWrapper(queryClient),
+      wrapper: makeWrapper(),
     })
-    await act(async () => {
-      jest.advanceTimersByTime(1000)
-    })
-    result.current.data!.forEach((slot) => {
-      expect(slot.status).toBe('done')
-    })
-  })
-
-  it('covers all 4 meal types', async () => {
-    const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
-      wrapper: makeWrapper(queryClient),
-    })
-    await act(async () => {
-      jest.advanceTimersByTime(1000)
-    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
     const mealTypes = result.current.data!.map((s) => s.meal)
     expect(mealTypes).toContain('Petit-déjeuner')
     expect(mealTypes).toContain('Déjeuner')
@@ -69,19 +75,24 @@ describe('usePlanningWeek (mock mode)', () => {
     expect(mealTypes).toContain('Dîner')
   })
 
-  it('each slot has a recipe with valid macros', async () => {
+  it('retourne une liste vide si aucun repas', async () => {
+    mockedGet.mockResolvedValueOnce({ data: { meals: [] } })
     const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
-      wrapper: makeWrapper(queryClient),
+      wrapper: makeWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toEqual([])
+  })
+
+  it("passe en état error en cas d'échec", async () => {
+    mockedGet.mockRejectedValue(new Error('Network error'))
+    const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
+      wrapper: makeWrapper(),
     })
     await act(async () => {
-      jest.advanceTimersByTime(1000)
+      await jest.runAllTimersAsync()
     })
-    result.current.data!.forEach((slot) => {
-      expect(slot.recipe).toBeDefined()
-      expect(slot.recipe!.kcal).toBeGreaterThan(0)
-      expect(slot.recipe!.proteines).toBeGreaterThanOrEqual(0)
-      expect(slot.recipe!.glucides).toBeGreaterThanOrEqual(0)
-      expect(slot.recipe!.lipides).toBeGreaterThanOrEqual(0)
-    })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    mockedGet.mockReset()
   })
 })

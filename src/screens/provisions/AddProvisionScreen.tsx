@@ -8,7 +8,7 @@ import {
 } from '@gorhom/bottom-sheet'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useRouter } from 'expo-router'
-import { useAtom, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -23,6 +23,7 @@ import { Calendar } from 'react-native-calendars'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useCreateStock } from '@/src/apis/backendApi/hooks/stock/useCreateStock'
 import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch'
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
 import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
@@ -39,7 +40,6 @@ import {
   StockItemState,
 } from '@/src/models/stock/stock-item.model'
 import { customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
-import { addProvision, provisionsAtom } from '@/src/store/provisionsAtom'
 
 type Tab = 'search' | 'barcode'
 
@@ -75,7 +75,7 @@ function foodToForm(food: FoodProduct): Partial<FormState> {
 export default function AddProvisionScreen() {
   const c = useColors()
   const router = useRouter()
-  const setProvisions = useSetAtom(provisionsAtom)
+  const { mutate: createStock } = useCreateStock()
   const [customFoods] = useAtom(customFoodsAtom)
 
   const [activeTab, setActiveTab] = useState<Tab>('search')
@@ -133,12 +133,10 @@ export default function AddProvisionScreen() {
     const qty = parseFloat(form.quantity)
     if (!form.name.trim() || isNaN(qty) || qty <= 0) return
 
-    const now = new Date().toISOString()
     const source = isManual ? 'manual' : (selectedFood?.source ?? 'manual')
 
-    setProvisions((prev) =>
-      addProvision(prev, {
-        id: `provision-${Date.now()}`,
+    createStock(
+      {
         name: form.name.trim(),
         brand: form.brand.trim() || undefined,
         quantity: qty,
@@ -149,14 +147,16 @@ export default function AddProvisionScreen() {
         per100g: selectedFood?.per100g,
         source,
         foodProductId: selectedFood?.id,
-        addedAt: now,
-      }),
+      },
+      {
+        onSuccess: () => {
+          formSheetRef.current?.dismiss()
+          setSelectedFood(null)
+          setScannedBarcode(null)
+          setSearchQuery('')
+        },
+      },
     )
-
-    formSheetRef.current?.dismiss()
-    setSelectedFood(null)
-    setScannedBarcode(null)
-    setSearchQuery('')
   }
 
   const renderBackdrop = useCallback(
@@ -335,12 +335,6 @@ export default function AddProvisionScreen() {
           <FormField label="Catégorie">
             <View style={tw`flex-row flex-wrap gap-2`}>
               {STOCK_CATEGORIES.map((cat) => {
-                const catColors: Record<StockCategory, string> = {
-                  Frais: c.primary,
-                  Sec: c.warning,
-                  Conserve: c.info,
-                  Surgelé: c.tertiary,
-                }
                 return (
                   <Chip
                     key={cat}

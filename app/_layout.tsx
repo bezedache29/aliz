@@ -7,13 +7,32 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import * as ExpoSplash from 'expo-splash-screen'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { Component, useState, type ErrorInfo, type ReactNode } from 'react'
+import { useSetAtom } from 'jotai'
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
+import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
+import { profileDTOtoOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { CustomSplash } from '@/src/components/custom-splash'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
+import { onboardingAtom } from '@/src/store/onboardingAtom'
+
+function ProfileSync() {
+  const { data: profile } = useProfile()
+  const setOnboarding = useSetAtom(onboardingAtom)
+
+  useEffect(() => {
+    if (!profile) return
+    setOnboarding((prev) => {
+      if (prev.completed) return prev
+      return { ...prev, ...profileDTOtoOnboardingData(profile), completed: true }
+    })
+  }, [profile, setOnboarding])
+
+  return null
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,6 +94,7 @@ export default function RootLayout() {
         <ErrorBoundary>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <BottomSheetModalProvider>
+              <ProfileSync />
               <Stack>
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />

@@ -4,6 +4,7 @@ import { View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useCreateProfile } from '@/src/apis/backendApi/hooks/profile/useCreateProfile'
 import { Button } from '@/src/components/button'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
 import { ScrollView } from '@/src/components/scroll-view'
@@ -37,6 +38,7 @@ export default function OnboardingSummaryScreen() {
   const c = useColors()
   const router = useRouter()
   const [onboarding, setOnboarding] = useAtom(onboardingAtom)
+  const { mutate: createProfile } = useCreateProfile()
 
   const goals =
     onboarding.currentWeight &&
@@ -59,6 +61,7 @@ export default function OnboardingSummaryScreen() {
 
   function onStart() {
     setOnboarding((prev) => ({ ...prev, completed: true }))
+    createProfile(onboarding)
     router.replace('/')
   }
 

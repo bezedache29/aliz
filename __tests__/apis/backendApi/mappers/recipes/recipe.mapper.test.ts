@@ -140,7 +140,7 @@ describe('recipeDTOtoRecipe', () => {
     expect(result.ingredients).toHaveLength(0)
   })
 
-  it('keeps steps undefined when absent in DTO', () => {
+  it('defaults steps to empty array when absent in DTO', () => {
     const dto: RecipeDTO = {
       id: 'x',
       name: 'Test',
@@ -149,7 +149,7 @@ describe('recipeDTOtoRecipe', () => {
       isFavorite: false,
     }
     const result = recipeDTOtoRecipe(dto)
-    expect(result.steps).toBeUndefined()
+    expect(result.steps).toEqual([])
   })
 })
 

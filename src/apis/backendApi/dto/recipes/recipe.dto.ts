@@ -18,7 +18,7 @@ export interface RecipeDTO {
   name: string
   category: string
   ingredients: RecipeIngredientDTO[]
-  steps: string[]
+  steps?: string[]
   isFavorite: boolean
   prepTime?: number
   cookTime?: number

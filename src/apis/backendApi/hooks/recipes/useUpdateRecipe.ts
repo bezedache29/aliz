@@ -9,11 +9,11 @@ import {
 import type { Recipe } from '@/src/models/recipe/recipe.model'
 
 async function fetchUpdateRecipe(recipe: Recipe): Promise<Recipe> {
-  const { data } = await backendClient.put<RecipeDTO>(
+  const { data } = await backendClient.put<{ data: RecipeDTO }>(
     `/api/recipes/${recipe.id}`,
     recipeToUpdateDTO(recipe),
   )
-  return recipeDTOtoRecipe(data)
+  return recipeDTOtoRecipe(data.data)
 }
 
 export function useUpdateRecipe() {

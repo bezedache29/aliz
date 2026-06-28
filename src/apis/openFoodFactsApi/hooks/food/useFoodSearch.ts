@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import { useQuery } from '@tanstack/react-query'
 
 import { offClient } from '@/src/apis/openFoodFactsApi/client'
@@ -30,6 +31,12 @@ export function useFoodSearch(query: string, enabled = true) {
     queryFn: () => fetchFoodSearch(query),
     enabled: enabled && query.trim().length >= 2,
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (!isAxiosError(error)) return false
+      const status = error.response?.status
+      if (status === 503 || status === undefined) return failureCount < 3
+      return false
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
 }

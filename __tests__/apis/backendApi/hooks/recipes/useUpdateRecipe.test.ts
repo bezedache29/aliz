@@ -53,7 +53,7 @@ const updatedDTO: RecipeDTO = {
 
 describe('useUpdateRecipe', () => {
   it('retourne la recette mise à jour', async () => {
-    mockedPut.mockResolvedValueOnce({ data: updatedDTO })
+    mockedPut.mockResolvedValueOnce({ data: { data: updatedDTO } })
     const queryClient = makeQueryClient()
     const { result } = await renderHook(() => useUpdateRecipe(), {
       wrapper: makeWrapper(queryClient),
@@ -70,7 +70,9 @@ describe('useUpdateRecipe', () => {
   })
 
   it('met à jour la recette dans le cache', async () => {
-    mockedPut.mockResolvedValueOnce({ data: { ...updatedDTO, name: 'Modifié', isFavorite: true } })
+    mockedPut.mockResolvedValueOnce({
+      data: { data: { ...updatedDTO, name: 'Modifié', isFavorite: true } },
+    })
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [existingRecipe])
 
@@ -89,7 +91,7 @@ describe('useUpdateRecipe', () => {
   })
 
   it('ne touche pas aux autres recettes du cache', async () => {
-    mockedPut.mockResolvedValueOnce({ data: { ...updatedDTO, name: 'Modifié' } })
+    mockedPut.mockResolvedValueOnce({ data: { data: { ...updatedDTO, name: 'Modifié' } } })
     const other: Recipe = { ...existingRecipe, id: 'recipe-2', name: 'Autre recette' }
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [existingRecipe, other])

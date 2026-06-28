@@ -100,6 +100,25 @@ describe('useFoodByBarcode', () => {
     expect(result.current.data).toBeNull()
   })
 
+  it('retourne null si les kcal sont à 0 ou négatifs', async () => {
+    mockedGet.mockResolvedValueOnce({
+      data: {
+        status: 1,
+        product: {
+          ...mockProductDTO,
+          nutriments: { 'energy-kcal_100g': 0 },
+        },
+      },
+    })
+
+    const { result } = await renderHook(() => useFoodByBarcode('3017620422003'), {
+      wrapper: makeWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data).toBeNull()
+  })
+
   it("passe en état error en cas d'échec réseau", async () => {
     // retry: 1 dans le hook → 2 tentatives au total avant de passer en erreur
     mockedGet.mockRejectedValueOnce(new Error('Network error'))

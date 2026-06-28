@@ -1,10 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { isAxiosError } from 'axios'
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
-import { KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, View } from 'react-native'
+import {
+  KeyboardAvoidingView,
+  ScrollView,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
@@ -50,7 +57,7 @@ const recipeSchema = z.object({
   prepTime: z.number().optional(),
   cookTime: z.number().optional(),
   servings: z.number().min(1).optional(),
-  steps: z.array(z.object({ value: z.string() })),
+  steps: z.array(z.object({ value: z.string() })).optional(),
   seasons: z.array(z.enum(['Printemps', 'Été', 'Automne', 'Hiver'] as const)).optional(),
   cookingMethod: z.enum(['Four', 'Poêle', 'Cookeo', 'Barbecue', 'Froid'] as const).optional(),
 })
@@ -64,12 +71,15 @@ export default function RecipeCreateScreen() {
   const [pendingIngredient, setPendingIngredient] = useAtom(pendingIngredientAtom)
 
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([])
-  const [ingredientError, setIngredientError] = useState(false)
+  const [ingredientError, setIngredientError] = useState<string | null>(null)
+  const [stepsError, setStepsError] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   const {
     control,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
   } = useForm<RecipeForm>({
     resolver: zodResolver(recipeSchema),
@@ -94,7 +104,7 @@ export default function RecipeCreateScreen() {
   useEffect(() => {
     if (pendingIngredient) {
       setIngredients((prev) => [...prev, pendingIngredient])
-      setIngredientError(false)
+      setIngredientError(null)
       setPendingIngredient(null)
     }
   }, [pendingIngredient, setPendingIngredient])
@@ -107,15 +117,19 @@ export default function RecipeCreateScreen() {
 
   function handleSave(data: RecipeForm) {
     if (ingredients.length === 0) {
-      setIngredientError(true)
+      setIngredientError('Ajoute au moins un ingrédient.')
       return
     }
+    setIngredientError(null)
+    setStepsError(null)
+    setApiError(null)
+
     createRecipe(
       {
         name: data.name,
         category: data.category as RecipeCategory,
         ingredients,
-        steps: data.steps.map((s) => s.value).filter(Boolean),
+        steps: (data.steps ?? []).map((s) => s.value).filter(Boolean),
         prepTime: data.prepTime,
         cookTime: data.cookTime,
         servings: data.servings ?? 1,
@@ -123,16 +137,47 @@ export default function RecipeCreateScreen() {
         cookingMethod: data.cookingMethod as RecipeCookingMethod | undefined,
         isFavorite: false,
       },
-      { onSuccess: () => router.back() },
+      {
+        onSuccess: () => {
+          ToastAndroid.show('Recette créée avec succès !', ToastAndroid.SHORT)
+          router.back()
+        },
+        onError: (error) => {
+          if (isAxiosError(error) && error.response?.data?.errors) {
+            const serverErrors = error.response.data.errors as Record<string, string[]>
+            let hasIngredientError = false
+            let hasOtherError = false
+
+            for (const [key, messages] of Object.entries(serverErrors)) {
+              const msg = messages[0]
+              if (key === 'name') {
+                setError('name', { type: 'server', message: msg })
+              } else if (key.startsWith('ingredients')) {
+                hasIngredientError = true
+              } else if (key === 'steps' || key.startsWith('steps.')) {
+                setStepsError(msg)
+              } else {
+                hasOtherError = true
+              }
+            }
+
+            if (hasIngredientError) {
+              setIngredientError('Certains ingrédients ont des données invalides.')
+            }
+            if (hasOtherError) {
+              setApiError('Une erreur est survenue. Vérifie les informations saisies.')
+            }
+          } else {
+            setApiError('Une erreur est survenue. Réessaie.')
+          }
+        },
+      },
     )
   }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView
-        style={tw`flex-1`}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
         {/* Header */}
         <View
           style={[
@@ -366,7 +411,7 @@ export default function RecipeCreateScreen() {
 
           {ingredientError && (
             <Text variant="caption" style={{ color: '#ef4444' }}>
-              Ajoute au moins un ingrédient.
+              {ingredientError}
             </Text>
           )}
 
@@ -431,7 +476,26 @@ export default function RecipeCreateScreen() {
                 Ajouter une étape
               </Text>
             </TouchableOpacity>
+
+            {stepsError && (
+              <Text variant="caption" style={{ color: '#ef4444' }}>
+                {stepsError}
+              </Text>
+            )}
           </View>
+
+          {apiError && (
+            <View
+              style={[
+                tw`rounded-xl px-4 py-3`,
+                { backgroundColor: '#ef444420', borderWidth: 1, borderColor: '#ef4444' },
+              ]}
+            >
+              <Text variant="caption" style={{ color: '#ef4444' }}>
+                {apiError}
+              </Text>
+            </View>
+          )}
 
           <Button
             label={isPending ? 'Enregistrement…' : 'Enregistrer la recette'}
@@ -446,6 +510,16 @@ export default function RecipeCreateScreen() {
   )
 }
 
+function formatIngredientQty(quantityG: number, displayUnit?: string): string {
+  if (!displayUnit || displayUnit === 'g') return `${quantityG} g`
+  const multipliers: Record<string, number> = { ml: 1, cl: 10, L: 1000 }
+  const mult = multipliers[displayUnit] ?? 1
+  const qty = quantityG / mult
+  const rounded = Number.isInteger(qty) ? qty : Math.round(qty * 10) / 10
+  if (displayUnit === 'ml') return `${rounded} ml`
+  return `${rounded} ${displayUnit} (${quantityG} g)`
+}
+
 function IngredientRow({
   ingredient,
   onRemove,
@@ -455,6 +529,7 @@ function IngredientRow({
 }) {
   const c = useColors()
   const kcal = Math.round((ingredient.food.per100g.kcal * ingredient.quantityG) / 100)
+  const qtyLabel = formatIngredientQty(ingredient.quantityG, ingredient.displayUnit)
 
   return (
     <View
@@ -472,11 +547,14 @@ function IngredientRow({
         <Ionicons name="nutrition-outline" size={16} color={c.primary} />
       </View>
       <View style={tw`flex-1`}>
-        <Text variant="body" style={{ fontWeight: '600' }} numberOfLines={1}>
+        <Text variant="body" style={{ fontWeight: '600' }}>
+          {ingredient.unitCount != null ? `${ingredient.unitCount} × ` : ''}
           {ingredient.food.name}
         </Text>
         <Text variant="caption" color="secondary">
-          {ingredient.quantityG} g · {kcal} kcal
+          {ingredient.unitCount != null
+            ? `${ingredient.unitWeightG} g/u · ${ingredient.quantityG} g · ${kcal} kcal`
+            : `${qtyLabel} · ${kcal} kcal`}
         </Text>
       </View>
       <TouchableOpacity hitSlop={8} onPress={onRemove}>

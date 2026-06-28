@@ -139,6 +139,18 @@ describe('recipeDTOtoRecipe', () => {
     const result = recipeDTOtoRecipe({ ...recipeDTO, ingredients: [] })
     expect(result.ingredients).toHaveLength(0)
   })
+
+  it('keeps steps undefined when absent in DTO', () => {
+    const dto: RecipeDTO = {
+      id: 'x',
+      name: 'Test',
+      category: 'Encas',
+      ingredients: [],
+      isFavorite: false,
+    }
+    const result = recipeDTOtoRecipe(dto)
+    expect(result.steps).toBeUndefined()
+  })
 })
 
 // ─── recipeToCreateDTO ───────────────────────────────────────────────────────
@@ -172,6 +184,14 @@ describe('recipeToCreateDTO', () => {
     expect(ing.per100gKcal).toBe(165)
     expect(ing.per100gProteines).toBe(31)
     expect(ing.quantityG).toBe(200)
+  })
+
+  it('defaults fibres and sel to 0 when undefined in ingredient', () => {
+    const { id: _id, isFavorite: _fav, ...recipeWithoutId } = recipe
+    const dto = recipeToCreateDTO(recipeWithoutId)
+    const ing = dto.ingredients[0]
+    expect(ing.per100gFibres).toBe(0)
+    expect(ing.per100gSel).toBe(0)
   })
 
   it('does not include id or isFavorite', () => {

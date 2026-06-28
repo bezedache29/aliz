@@ -52,7 +52,7 @@ const createdDTO: RecipeDTO = {
 
 describe('useCreateRecipe', () => {
   it("retourne la recette créée avec l'id backend", async () => {
-    mockedPost.mockResolvedValueOnce({ data: createdDTO })
+    mockedPost.mockResolvedValueOnce({ data: { data: createdDTO } })
     const queryClient = makeQueryClient()
     const { result } = await renderHook(() => useCreateRecipe(), {
       wrapper: makeWrapper(queryClient),
@@ -68,7 +68,7 @@ describe('useCreateRecipe', () => {
   })
 
   it('ajoute la recette en tête du cache', async () => {
-    mockedPost.mockResolvedValueOnce({ data: createdDTO })
+    mockedPost.mockResolvedValueOnce({ data: { data: createdDTO } })
     const queryClient = makeQueryClient()
     queryClient.setQueryData<Recipe[]>(['recipes'], [])
 

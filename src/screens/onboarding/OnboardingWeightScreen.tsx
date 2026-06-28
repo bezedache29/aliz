@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
 import { Controller, useForm } from 'react-hook-form'
-import { KeyboardAvoidingView, Platform, View } from 'react-native'
+import { KeyboardAvoidingView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
@@ -46,10 +46,7 @@ export default function OnboardingWeightScreen() {
 
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView
-        style={tw`flex-1`}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
         <View style={tw`flex-1 p-6 gap-8`}>
           <OnboardingProgress current={3} />
 

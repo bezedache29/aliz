@@ -76,6 +76,7 @@ export const MealItemEditSheet = forwardRef<BottomSheetModal, Props>(
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: c.surface }}
         handleIndicatorStyle={{ backgroundColor: c.border }}
+        keyboardBehavior="extend"
       >
         <BottomSheetView style={tw`px-4 pt-2 pb-8 gap-4`}>
           {/* Header */}

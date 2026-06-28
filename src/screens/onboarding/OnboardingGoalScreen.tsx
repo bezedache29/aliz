@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
 import { useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native'
+import { KeyboardAvoidingView, Pressable, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
@@ -106,10 +106,7 @@ export default function OnboardingGoalScreen() {
 
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView
-        style={tw`flex-1`}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
         <ScrollView contentContainerStyle={tw`p-6 gap-8`} keyboardShouldPersistTaps="handled">
           <OnboardingProgress current={4} />
 

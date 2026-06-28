@@ -9,8 +9,11 @@ import {
 import type { Recipe } from '@/src/models/recipe/recipe.model'
 
 async function fetchCreateRecipe(recipe: Omit<Recipe, 'id'>): Promise<Recipe> {
-  const { data } = await backendClient.post<RecipeDTO>('/api/recipes', recipeToCreateDTO(recipe))
-  return recipeDTOtoRecipe(data)
+  const { data } = await backendClient.post<{ data: RecipeDTO }>(
+    '/api/recipes',
+    recipeToCreateDTO(recipe),
+  )
+  return recipeDTOtoRecipe(data.data)
 }
 
 export function useCreateRecipe() {

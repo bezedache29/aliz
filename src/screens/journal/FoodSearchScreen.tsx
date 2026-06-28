@@ -8,7 +8,7 @@ import {
 } from '@gorhom/bottom-sheet'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CameraView, useCameraPermissions } from 'expo-camera'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useAtom, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -18,7 +18,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Linking,
-  Platform,
   TextInput,
   TouchableOpacity,
   View,
@@ -27,21 +26,21 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
 
-import { Button } from '@/src/components/button'
-import { ScrollView } from '@/src/components/scroll-view'
-import { Text } from '@/src/components/text'
 import { isCiqualLoaded } from '@/src/apis/ciqualApi/client'
 import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch'
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
 import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
+import { Button } from '@/src/components/button'
+import { ScrollView } from '@/src/components/scroll-view'
+import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
 import { useColors } from '@/src/hooks/use-colors'
 import { FoodProduct } from '@/src/models/food/food.model'
 import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
 import { addCustomFood, customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
 import { pendingIngredientAtom } from '@/src/store/pendingIngredientAtom'
-import { addToRecent, recentFoodsAtom } from '@/src/store/recentFoodsAtom'
 import { weekPlanAtom } from '@/src/store/planningAtom'
+import { addToRecent, recentFoodsAtom } from '@/src/store/recentFoodsAtom'
 
 type SearchMode = 'favorites' | 'barcode' | 'apis'
 type FoodSource = 'openfoodfacts' | 'ciqual'
@@ -49,13 +48,23 @@ type FoodSource = 'openfoodfacts' | 'ciqual'
 const manualFoodSchema = z.object({
   name: z.string().min(2, 'Nom requis (min. 2 caractères)'),
   brand: z.string().optional(),
-  kcal: z.number().min(0, 'Requis'),
-  proteines: z.number().min(0, 'Requis'),
-  glucides: z.number().min(0, 'Requis'),
-  lipides: z.number().min(0, 'Requis'),
-  quantite: z.number().min(1, 'Requis'),
+  kcal: z.coerce.number().min(0, 'Requis'),
+  proteines: z.coerce.number().min(0, 'Requis'),
+  glucides: z.coerce.number().min(0, 'Requis'),
+  lipides: z.coerce.number().min(0, 'Requis'),
+  quantite: z.coerce.number().min(1, 'Requis'),
 })
 type ManualFoodForm = z.infer<typeof manualFoodSchema>
+type ManualFoodInput = Omit<
+  ManualFoodForm,
+  'kcal' | 'proteines' | 'glucides' | 'lipides' | 'quantite'
+> & {
+  kcal: unknown
+  proteines: unknown
+  glucides: unknown
+  lipides: unknown
+  quantite: unknown
+}
 
 const MODES: {
   key: SearchMode
@@ -106,6 +115,17 @@ function calcMacros(food: FoodProduct, grams: number) {
   }
 }
 
+type VolumeUnit = 'g' | 'ml' | 'cl' | 'L'
+type FoodUnit = VolumeUnit | 'u'
+
+const UNIT_TO_GRAMS: Record<VolumeUnit, number> = { g: 1, ml: 1, cl: 10, L: 1000 }
+
+function toGrams(valueStr: string, unit: VolumeUnit): string {
+  const val = parseFloat(valueStr.replace(',', '.'))
+  if (isNaN(val)) return '0'
+  return String(Math.round(val * UNIT_TO_GRAMS[unit]))
+}
+
 function FoodItem({
   item,
   isSelected,
@@ -122,9 +142,54 @@ function FoodItem({
   preview: ReturnType<typeof calcMacros> | null
   onPress: () => void
   onChangeQuantity: (v: string) => void
-  onAdd: () => void
+  onAdd: (unitInfo?: { count: number; weightG: number }, displayUnit?: string) => void
   c: ReturnType<typeof import('@/src/hooks/use-colors').useColors>
 }) {
+  const [selectedUnit, setSelectedUnit] = useState<FoodUnit>('g')
+  const [localQty, setLocalQty] = useState('100')
+  const [unitCount, setUnitCount] = useState('1')
+  const [unitWeight, setUnitWeight] = useState('100')
+
+  useEffect(() => {
+    if (!isSelected) {
+      setSelectedUnit('g')
+      setLocalQty('100')
+      setUnitCount('1')
+      setUnitWeight('100')
+    }
+  }, [isSelected])
+
+  function handleUnitSelect(u: FoodUnit) {
+    setSelectedUnit(u)
+    if (u === 'u') {
+      const weight = parseFloat(toGrams(localQty, selectedUnit !== 'u' ? selectedUnit : 'g')) || 100
+      setUnitWeight(String(weight))
+      setUnitCount('1')
+      onChangeQuantity(String(Math.round(weight)))
+    } else {
+      onChangeQuantity(toGrams(localQty, u))
+    }
+  }
+
+  function handleLocalQtyChange(v: string) {
+    setLocalQty(v)
+    onChangeQuantity(toGrams(v, selectedUnit !== 'u' ? selectedUnit : 'g'))
+  }
+
+  function handleUnitCountChange(v: string) {
+    setUnitCount(v)
+    const count = parseFloat(v.replace(',', '.')) || 0
+    const weight = parseFloat(unitWeight.replace(',', '.')) || 0
+    onChangeQuantity(String(Math.round(count * weight)))
+  }
+
+  function handleUnitWeightChange(v: string) {
+    setUnitWeight(v)
+    const count = parseFloat(unitCount.replace(',', '.')) || 0
+    const weight = parseFloat(v.replace(',', '.')) || 0
+    onChangeQuantity(String(Math.round(count * weight)))
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -145,11 +210,11 @@ function FoodItem({
           />
         </View>
         <View style={tw`flex-1`}>
-          <View style={tw`flex-row items-center gap-2`}>
+          <View style={tw`flex-row items-center gap-2 flex-wrap`}>
             <Text
               variant="body"
               style={{ fontWeight: isSelected ? '700' : '500' }}
-              numberOfLines={1}
+              numberOfLines={isSelected ? undefined : 1}
             >
               {item.name}
             </Text>
@@ -161,7 +226,7 @@ function FoodItem({
               </View>
             )}
           </View>
-          <Text variant="caption" color="secondary" numberOfLines={1}>
+          <Text variant="caption" color="secondary" numberOfLines={isSelected ? undefined : 1}>
             {[item.brand, item.per100g ? `${item.per100g.kcal} kcal/100g` : null]
               .filter(Boolean)
               .join(' · ')}
@@ -172,46 +237,161 @@ function FoodItem({
 
       {isSelected && (
         <View style={tw`mt-3 gap-3`}>
-          <View style={tw`flex-row items-center gap-3`}>
-            <View style={tw`flex-1`}>
-              <Text variant="label" color="muted" uppercase style={tw`mb-1`}>
-                Quantité
-              </Text>
-              <View
+          {/* Sélecteur d'unité unifié */}
+          <View style={tw`flex-row gap-1 flex-wrap`}>
+            {(['g', 'ml', 'cl', 'L', 'u'] as FoodUnit[]).map((u) => (
+              <TouchableOpacity
+                key={u}
+                onPress={() => handleUnitSelect(u)}
                 style={[
-                  tw`flex-row items-center rounded-xl px-4`,
-                  { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, height: 44 },
+                  tw`px-3 py-1.5 rounded-lg`,
+                  {
+                    backgroundColor: selectedUnit === u ? c.primary : c.surface,
+                    borderWidth: 1,
+                    borderColor: selectedUnit === u ? c.primary : c.border,
+                  },
                 ]}
               >
-                <TextInput
-                  value={quantityStr}
-                  onChangeText={onChangeQuantity}
-                  keyboardType="numeric"
-                  selectTextOnFocus
-                  style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
-                />
-                <Text variant="body" color="muted">
-                  g
+                <Text
+                  variant="caption"
+                  style={{
+                    color: selectedUnit === u ? '#fff' : c.textSecondary,
+                    fontWeight: '600',
+                  }}
+                >
+                  {u === 'u' ? 'unité' : u}
                 </Text>
-              </View>
-            </View>
-            {preview && (
-              <View
-                style={[
-                  tw`flex-1 rounded-xl p-3`,
-                  { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
-                ]}
-              >
-                <Text variant="body" style={{ fontWeight: '700', color: c.primary }}>
-                  {preview.kcal} kcal
-                </Text>
-                <Text variant="caption" color="secondary">
-                  P {preview.proteines}g · G {preview.glucides}g · L {preview.lipides}g
-                </Text>
-              </View>
-            )}
+              </TouchableOpacity>
+            ))}
           </View>
-          <Button label="Ajouter" fullWidth onPress={onAdd} />
+
+          {selectedUnit !== 'u' ? (
+            <View style={tw`flex-row items-center gap-3`}>
+              <View style={tw`flex-1`}>
+                <View
+                  style={[
+                    tw`flex-row items-center rounded-xl px-4`,
+                    {
+                      backgroundColor: c.surface,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      height: 44,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={localQty}
+                    onChangeText={handleLocalQtyChange}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                    style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
+                  />
+                  <Text variant="body" color="muted">
+                    {selectedUnit}
+                  </Text>
+                </View>
+              </View>
+              {preview && (
+                <View
+                  style={[
+                    tw`flex-1 rounded-xl p-3`,
+                    { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+                  ]}
+                >
+                  <Text variant="body" style={{ fontWeight: '700', color: c.primary }}>
+                    {preview.kcal} kcal
+                  </Text>
+                  <Text variant="caption" color="secondary">
+                    P {preview.proteines}g · G {preview.glucides}g · L {preview.lipides}g
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={tw`gap-2`}>
+              <View style={tw`flex-row items-center gap-2`}>
+                <View
+                  style={[
+                    tw`flex-1 flex-row items-center rounded-xl px-4`,
+                    {
+                      backgroundColor: c.surface,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      height: 44,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={unitCount}
+                    onChangeText={handleUnitCountChange}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                    style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
+                  />
+                  <Text variant="body" color="muted">
+                    unité(s)
+                  </Text>
+                </View>
+                <Text variant="body" color="muted">
+                  ×
+                </Text>
+                <View
+                  style={[
+                    tw`flex-1 flex-row items-center rounded-xl px-4`,
+                    {
+                      backgroundColor: c.surface,
+                      borderWidth: 1,
+                      borderColor: c.border,
+                      height: 44,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={unitWeight}
+                    onChangeText={handleUnitWeightChange}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                    style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
+                  />
+                  <Text variant="body" color="muted">
+                    g/unité
+                  </Text>
+                </View>
+              </View>
+              {preview && (
+                <View
+                  style={[
+                    tw`flex-row items-center justify-between rounded-xl px-4 py-3`,
+                    { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
+                  ]}
+                >
+                  <Text variant="caption" color="secondary">
+                    = {quantityStr} g au total
+                  </Text>
+                  <Text variant="body" style={{ fontWeight: '700', color: c.primary }}>
+                    {preview.kcal} kcal · P {preview.proteines}g · G {preview.glucides}g · L{' '}
+                    {preview.lipides}g
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <Button
+            label="Ajouter"
+            fullWidth
+            onPress={() =>
+              onAdd(
+                selectedUnit === 'u'
+                  ? {
+                      count: parseFloat(unitCount.replace(',', '.')) || 1,
+                      weightG: parseFloat(unitWeight.replace(',', '.')) || 100,
+                    }
+                  : undefined,
+                selectedUnit !== 'g' && selectedUnit !== 'u' ? selectedUnit : undefined,
+              )
+            }
+          />
         </View>
       )}
     </TouchableOpacity>
@@ -362,9 +542,21 @@ function BarcodeFoodCard({
           <View style={[tw`flex-1 justify-center gap-2`]}>
             {(
               [
-                { label: 'Protéines', value: food.per100g?.proteines ?? 0, color: c.info },
-                { label: 'Glucides', value: food.per100g?.glucides ?? 0, color: c.warning },
-                { label: 'Lipides', value: food.per100g?.lipides ?? 0, color: c.tertiary },
+                {
+                  label: 'Protéines',
+                  value: Math.round((food.per100g?.proteines ?? 0) * 10) / 10,
+                  color: c.info,
+                },
+                {
+                  label: 'Glucides',
+                  value: Math.round((food.per100g?.glucides ?? 0) * 10) / 10,
+                  color: c.warning,
+                },
+                {
+                  label: 'Lipides',
+                  value: Math.round((food.per100g?.lipides ?? 0) * 10) / 10,
+                  color: c.tertiary,
+                },
               ] as const
             ).map(({ label, value, color }) => (
               <View key={label} style={tw`flex-row items-center gap-2`}>
@@ -478,7 +670,7 @@ export default function FoodSearchScreen() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ManualFoodForm>({
+  } = useForm<ManualFoodInput, unknown, ManualFoodForm>({
     resolver: zodResolver(manualFoodSchema),
     defaultValues: { quantite: 100, kcal: 0, proteines: 0, glucides: 0, lipides: 0 },
   })
@@ -601,9 +793,14 @@ export default function FoodSearchScreen() {
     router.back()
   }
 
-  function handleAdd(overrideFood?: FoodProduct) {
+  function handleAdd(
+    overrideFood?: FoodProduct,
+    unitInfo?: { count: number; weightG: number },
+    displayUnit?: string,
+  ) {
     const rawFood = overrideFood ?? selectedFood
     if (!rawFood) return
+
     // Construction explicite pour exclure toute propriété interne React/React Query
     const food: FoodProduct = {
       id: rawFood.id,
@@ -623,7 +820,12 @@ export default function FoodSearchScreen() {
     const grams = parseFloat(quantityStr.replace(',', '.')) || 100
 
     if (isRecipeMode) {
-      setPendingIngredient({ food, quantityG: grams })
+      setPendingIngredient({
+        food,
+        quantityG: grams,
+        ...(unitInfo ? { unitCount: unitInfo.count, unitWeightG: unitInfo.weightG } : {}),
+        ...(displayUnit ? { displayUnit } : {}),
+      })
       router.back()
       return
     }
@@ -666,16 +868,14 @@ export default function FoodSearchScreen() {
     quantityStr,
     preview,
     onChangeQuantity: setQuantityStr,
-    onAdd: handleAdd,
+    onAdd: (unitInfo?: { count: number; weightG: number }, displayUnit?: string) =>
+      handleAdd(undefined, unitInfo, displayUnit),
     c,
   }
 
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={tw`flex-1`}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
         {/* Header */}
         <View
           style={[
@@ -964,8 +1164,8 @@ export default function FoodSearchScreen() {
         ) : isError ? (
           <EmptyState
             icon="cloud-offline-outline"
-            title="Connexion impossible"
-            description={`Impossible de contacter ${activeSourceDef.label}. Vérifie ta connexion.`}
+            title="OpenFoodFacts indisponible"
+            description="Le service est temporairement surchargé. Utilise CIQUAL pour la recherche, le scan code-barres reste fonctionnel."
             c={c}
           />
         ) : searchResults.length === 0 && debouncedQuery.trim() ? (
@@ -1073,7 +1273,7 @@ export default function FoodSearchScreen() {
         ref={addFoodSheetRef}
         snapPoints={['90%']}
         backdropComponent={renderBackdrop}
-        keyboardBehavior="interactive"
+        keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         backgroundStyle={{ backgroundColor: c.surface }}
         handleIndicatorStyle={{ backgroundColor: c.border }}
@@ -1190,9 +1390,9 @@ export default function FoodSearchScreen() {
                       >
                         <TextInput
                           value={String(value)}
-                          onChangeText={(v) => onChange(parseFloat(v) || 0)}
+                          onChangeText={onChange}
                           onBlur={onBlur}
-                          keyboardType="numeric"
+                          keyboardType="decimal-pad"
                           selectTextOnFocus
                           style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
                         />
@@ -1233,9 +1433,9 @@ export default function FoodSearchScreen() {
                       >
                         <TextInput
                           value={String(value)}
-                          onChangeText={(v) => onChange(parseFloat(v) || 0)}
+                          onChangeText={onChange}
                           onBlur={onBlur}
-                          keyboardType="numeric"
+                          keyboardType="decimal-pad"
                           selectTextOnFocus
                           style={[tw`flex-1 text-base`, { color: c.textPrimary }]}
                         />

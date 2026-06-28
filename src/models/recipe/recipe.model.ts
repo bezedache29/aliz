@@ -28,6 +28,9 @@ export const RECIPE_COOKING_METHODS: RecipeCookingMethod[] = [
 export interface RecipeIngredient {
   food: FoodProduct
   quantityG: number
+  unitCount?: number
+  unitWeightG?: number
+  displayUnit?: string
 }
 
 export interface Recipe {

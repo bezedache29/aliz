@@ -6,6 +6,7 @@ import {
   BottomSheetTextInput,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet'
+import { isAxiosError } from 'axios'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
@@ -16,6 +17,7 @@ import {
   Keyboard,
   Modal,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -85,6 +87,8 @@ export default function AddProvisionScreen() {
   const [isManual, setIsManual] = useState(false)
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [calendarVisible, setCalendarVisible] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [apiError, setApiError] = useState<string | null>(null)
   const [permission, requestPermission] = useCameraPermissions()
 
   const formSheetRef = useRef<BottomSheetModal>(null)
@@ -133,6 +137,9 @@ export default function AddProvisionScreen() {
     const qty = parseFloat(form.quantity)
     if (!form.name.trim() || isNaN(qty) || qty <= 0) return
 
+    setFieldErrors({})
+    setApiError(null)
+
     const source = isManual ? 'manual' : (selectedFood?.source ?? 'manual')
 
     createStock(
@@ -150,10 +157,32 @@ export default function AddProvisionScreen() {
       },
       {
         onSuccess: () => {
+          ToastAndroid.show('Provision ajoutée !', ToastAndroid.SHORT)
           formSheetRef.current?.dismiss()
           setSelectedFood(null)
           setScannedBarcode(null)
           setSearchQuery('')
+        },
+        onError: (error) => {
+          if (isAxiosError(error) && error.response?.data?.errors) {
+            const serverErrors = error.response.data.errors as Record<string, string[]>
+            const mapped: Record<string, string> = {}
+            let hasOtherError = false
+
+            for (const [key, messages] of Object.entries(serverErrors)) {
+              if (key === 'name' || key === 'quantity') {
+                mapped[key] = messages[0]
+              } else {
+                hasOtherError = true
+              }
+            }
+
+            if (Object.keys(mapped).length > 0) setFieldErrors(mapped)
+            if (hasOtherError)
+              setApiError('Une erreur est survenue. Vérifie les informations saisies.')
+          } else {
+            setApiError('Une erreur est survenue. Réessaie.')
+          }
         },
       },
     )
@@ -272,6 +301,11 @@ export default function AddProvisionScreen() {
                   },
                 ]}
               />
+              {fieldErrors.name && (
+                <Text variant="caption" style={{ color: '#ef4444' }}>
+                  {fieldErrors.name}
+                </Text>
+              )}
             </FormField>
           )}
 
@@ -314,6 +348,11 @@ export default function AddProvisionScreen() {
                 },
               ]}
             />
+            {fieldErrors.quantity && (
+              <Text variant="caption" style={{ color: '#ef4444' }}>
+                {fieldErrors.quantity}
+              </Text>
+            )}
           </FormField>
 
           {/* Unité */}
@@ -410,6 +449,19 @@ export default function AddProvisionScreen() {
               <MacroCell label="Lip." value={selectedFood.per100g.lipides} color={c.tertiary} />
               <Text variant="label" color="muted" style={tw`self-end`}>
                 /100g
+              </Text>
+            </View>
+          )}
+
+          {apiError && (
+            <View
+              style={[
+                tw`rounded-xl px-4 py-3`,
+                { backgroundColor: '#ef444420', borderWidth: 1, borderColor: '#ef4444' },
+              ]}
+            >
+              <Text variant="caption" style={{ color: '#ef4444' }}>
+                {apiError}
               </Text>
             </View>
           )}
@@ -740,7 +792,7 @@ function MacroCell({ label, value, color }: { label: string; value: number; colo
   return (
     <View style={tw`items-center gap-0.5`}>
       <Text variant="body" style={{ fontWeight: '700', color }}>
-        {Math.round(value)}
+        {Math.round(value * 10) / 10}
       </Text>
       <Text variant="label" color="muted">
         {label}

@@ -17,6 +17,7 @@ async function fetchFoodByBarcode(barcode: string): Promise<FoodProduct | null> 
       params: { fields: 'code,product_name,brands,nutriments,image_thumb_url' },
     })
     if (data.status !== 1 || !data.product?.product_name?.trim()) return null
+    if ((data.product.nutriments?.['energy-kcal_100g'] ?? 0) <= 0) return null
     return openFoodFactsDTOtoFoodProduct(data.product)
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 404) return null
@@ -30,6 +31,12 @@ export function useFoodByBarcode(barcode: string | null) {
     queryFn: () => fetchFoodByBarcode(barcode!),
     enabled: !!barcode,
     staleTime: 10 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (!isAxiosError(error)) return false
+      const status = error.response?.status
+      if (status === 503 || status === undefined) return failureCount < 3
+      return false
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
 }

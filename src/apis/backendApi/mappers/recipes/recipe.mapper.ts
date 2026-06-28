@@ -44,8 +44,8 @@ function ingredientToDTO(ingredient: RecipeIngredient): RecipeIngredientDTO {
     per100gProteines: ingredient.food.per100g.proteines,
     per100gGlucides: ingredient.food.per100g.glucides,
     per100gLipides: ingredient.food.per100g.lipides,
-    per100gFibres: ingredient.food.per100g.fibres,
-    per100gSel: ingredient.food.per100g.sel,
+    per100gFibres: ingredient.food.per100g.fibres ?? 0,
+    per100gSel: ingredient.food.per100g.sel ?? 0,
     quantityG: ingredient.quantityG,
   }
 }
@@ -56,7 +56,7 @@ export function recipeDTOtoRecipe(dto: RecipeDTO): Recipe {
     name: dto.name,
     category: dto.category as RecipeCategory,
     ingredients: dto.ingredients.map(ingredientDTOtoIngredient),
-    steps: dto.steps,
+    steps: dto.steps ?? [],
     isFavorite: dto.isFavorite,
     prepTime: dto.prepTime,
     cookTime: dto.cookTime,

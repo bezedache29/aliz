@@ -46,6 +46,9 @@ const stockDTO: StockItemDTO = {
   per100gGlucides: 77,
   per100gLipides: 0.5,
   quantityG: 500,
+  unit: 'kg',
+  category: 'Frais',
+  state: 'cru',
   expiryDate: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
@@ -59,8 +62,9 @@ describe('useStock', () => {
     expect(result.current.data).toHaveLength(1)
     expect(result.current.data![0].id).toBe('s-1')
     expect(result.current.data![0].name).toBe('Riz basmati')
-    expect(result.current.data![0].unit).toBe('g')
-    expect(result.current.data![0].category).toBe('Sec')
+    expect(result.current.data![0].unit).toBe('kg')
+    expect(result.current.data![0].category).toBe('Frais')
+    expect(result.current.data![0].state).toBe('cru')
   })
 
   it('retourne une liste vide si le stock est vide', async () => {

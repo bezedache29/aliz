@@ -10,6 +10,9 @@ export interface StockItemDTO {
   per100gGlucides: number | null
   per100gLipides: number | null
   quantityG: number
+  unit: string
+  category: string
+  state: string | null
   expiryDate: string | null
   createdAt: string
   updatedAt: string
@@ -34,6 +37,9 @@ export interface CreateStockDTO {
   per100gGlucides?: number | null
   per100gLipides?: number | null
   quantityG: number
+  unit: string
+  category: string
+  state?: string | null
   expiryDate?: string | null
 }
 

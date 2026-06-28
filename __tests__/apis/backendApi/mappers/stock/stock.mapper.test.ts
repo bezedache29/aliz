@@ -18,6 +18,9 @@ const stockDTO: StockItemDTO = {
   per100gGlucides: 77,
   per100gLipides: 0.5,
   quantityG: 500,
+  unit: 'g',
+  category: 'Sec',
+  state: null,
   expiryDate: '2026-12-31',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
@@ -48,14 +51,22 @@ describe('stockItemDTOtoStockItem', () => {
     expect(item.addedAt).toBe('2026-01-01T00:00:00Z')
   })
 
-  it("force unit à 'g' quel que soit le DTO", () => {
-    const item = stockItemDTOtoStockItem(stockDTO)
-    expect(item.unit).toBe('g')
+  it('lit unit depuis le DTO', () => {
+    expect(stockItemDTOtoStockItem(stockDTO).unit).toBe('g')
+    expect(stockItemDTOtoStockItem({ ...stockDTO, unit: 'kg' }).unit).toBe('kg')
   })
 
-  it("force category à 'Sec' quel que soit le DTO", () => {
-    const item = stockItemDTOtoStockItem(stockDTO)
-    expect(item.category).toBe('Sec')
+  it('lit category depuis le DTO', () => {
+    expect(stockItemDTOtoStockItem(stockDTO).category).toBe('Sec')
+    expect(stockItemDTOtoStockItem({ ...stockDTO, category: 'Frais' }).category).toBe('Frais')
+  })
+
+  it('lit state depuis le DTO quand présent', () => {
+    expect(stockItemDTOtoStockItem({ ...stockDTO, state: 'cuit' }).state).toBe('cuit')
+  })
+
+  it('met state à undefined quand null', () => {
+    expect(stockItemDTOtoStockItem({ ...stockDTO, state: null }).state).toBeUndefined()
   })
 
   it('mappe per100g quand les valeurs sont présentes', () => {
@@ -132,6 +143,22 @@ describe('stockItemToCreateDTO', () => {
     expect(dto.per100gLipides).toBeNull()
   })
 
+  it('inclut unit et category', () => {
+    const dto = stockItemToCreateDTO({ ...stockItem, unit: 'kg', category: 'Frais' })
+    expect(dto.unit).toBe('kg')
+    expect(dto.category).toBe('Frais')
+  })
+
+  it('met state à null quand absent', () => {
+    const dto = stockItemToCreateDTO({ ...stockItem, state: undefined })
+    expect(dto.state).toBeNull()
+  })
+
+  it('inclut state quand défini', () => {
+    const dto = stockItemToCreateDTO({ ...stockItem, state: 'cuit' })
+    expect(dto.state).toBe('cuit')
+  })
+
   it('met expiryDate à null quand absent', () => {
     const dto = stockItemToCreateDTO({ ...stockItem, expiryDate: undefined })
     expect(dto.expiryDate).toBeNull()
@@ -186,5 +213,23 @@ describe('stockItemToUpdateDTO', () => {
   it('ignore brand quand sa valeur est undefined (champ non modifié)', () => {
     const dto = stockItemToUpdateDTO({ brand: undefined })
     expect(dto.foodBrand).toBeUndefined()
+  })
+
+  it('inclut unit quand défini', () => {
+    const dto = stockItemToUpdateDTO({ unit: 'kg' })
+    expect(dto.unit).toBe('kg')
+  })
+
+  it('inclut category quand définie', () => {
+    const dto = stockItemToUpdateDTO({ category: 'Frais' })
+    expect(dto.category).toBe('Frais')
+  })
+
+  it('inclut state quand défini', () => {
+    expect(stockItemToUpdateDTO({ state: 'cuit' }).state).toBe('cuit')
+  })
+
+  it('met state à null quand explicitement undefined', () => {
+    expect(stockItemToUpdateDTO({ state: undefined }).state).toBeUndefined()
   })
 })

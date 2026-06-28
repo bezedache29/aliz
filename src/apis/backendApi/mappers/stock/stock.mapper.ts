@@ -11,8 +11,9 @@ export function stockItemDTOtoStockItem(dto: StockItemDTO): StockItem {
     name: dto.foodName,
     brand: dto.foodBrand ?? undefined,
     quantity: dto.quantityG,
-    unit: 'g',
-    category: 'Sec',
+    unit: dto.unit,
+    category: (dto.category as StockItem['category']) ?? 'Sec',
+    state: (dto.state as StockItem['state']) ?? undefined,
     expiryDate: dto.expiryDate ?? undefined,
     per100g:
       dto.per100gKcal != null
@@ -40,6 +41,9 @@ export function stockItemToCreateDTO(item: Omit<StockItem, 'id' | 'addedAt'>): C
     per100gGlucides: item.per100g?.glucides ?? null,
     per100gLipides: item.per100g?.lipides ?? null,
     quantityG: item.quantity,
+    unit: item.unit,
+    category: item.category,
+    state: item.state ?? null,
     expiryDate: item.expiryDate ?? null,
   }
 }
@@ -57,6 +61,9 @@ export function stockItemToUpdateDTO(item: Partial<StockItem>): UpdateStockDTO {
     dto.per100gLipides = item.per100g?.lipides ?? null
   }
   if (item.quantity !== undefined) dto.quantityG = item.quantity
+  if (item.unit !== undefined) dto.unit = item.unit
+  if (item.category !== undefined) dto.category = item.category
+  if (item.state !== undefined) dto.state = item.state ?? null
   if (item.expiryDate !== undefined) dto.expiryDate = item.expiryDate ?? null
   return dto
 }

@@ -4,9 +4,11 @@ import { Platform, StyleSheet } from 'react-native'
 
 import { HapticTab } from '@/src/components/haptic-tab'
 import { useColors } from '@/src/hooks/use-colors'
+import { useExpiringCount } from '@/src/hooks/use-expiring-count'
 
 export default function TabLayout() {
   const c = useColors()
+  const expiringCount = useExpiringCount()
 
   return (
     <Tabs
@@ -56,6 +58,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? 'basket' : 'basket-outline'} size={22} color={color} />
           ),
+          tabBarBadge: expiringCount > 0 ? expiringCount : undefined,
         }}
       />
       <Tabs.Screen

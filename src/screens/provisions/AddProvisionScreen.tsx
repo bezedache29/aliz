@@ -44,6 +44,7 @@ import {
 import { customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
 
 type Tab = 'search' | 'barcode'
+type SearchSource = 'ciqual' | 'off' | 'both'
 
 type FormState = {
   name: string
@@ -53,6 +54,10 @@ type FormState = {
   category: StockCategory
   itemState: StockItemState | ''
   expiryDate: string | null
+  kcal: string
+  proteines: string
+  glucides: string
+  lipides: string
 }
 
 const DEFAULT_FORM: FormState = {
@@ -63,6 +68,10 @@ const DEFAULT_FORM: FormState = {
   category: 'Frais',
   itemState: '',
   expiryDate: null,
+  kcal: '',
+  proteines: '',
+  glucides: '',
+  lipides: '',
 }
 
 function foodToForm(food: FoodProduct): Partial<FormState> {
@@ -81,6 +90,7 @@ export default function AddProvisionScreen() {
   const [customFoods] = useAtom(customFoodsAtom)
 
   const [activeTab, setActiveTab] = useState<Tab>('search')
+  const [searchSource, setSearchSource] = useState<SearchSource>('ciqual')
   const [searchQuery, setSearchQuery] = useState('')
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [selectedFood, setSelectedFood] = useState<FoodProduct | null>(null)
@@ -93,8 +103,14 @@ export default function AddProvisionScreen() {
 
   const formSheetRef = useRef<BottomSheetModal>(null)
 
-  const { data: ciqualResults = [], isFetching: ciqualLoading } = useCiqualSearch(searchQuery)
-  const { data: offResults = [], isFetching: offLoading } = useFoodSearch(searchQuery)
+  const { data: ciqualResults = [], isFetching: ciqualLoading } = useCiqualSearch(
+    searchQuery,
+    searchSource === 'ciqual' || searchSource === 'both',
+  )
+  const { data: offResults = [], isFetching: offLoading } = useFoodSearch(
+    searchQuery,
+    searchSource === 'off' || searchSource === 'both',
+  )
   const { data: barcodeFood, isFetching: barcodeLoading } = useFoodByBarcode(scannedBarcode)
 
   const customResults = searchCustomFoods(customFoods, searchQuery)
@@ -142,6 +158,16 @@ export default function AddProvisionScreen() {
 
     const source = isManual ? 'manual' : (selectedFood?.source ?? 'manual')
 
+    const manualPer100g =
+      isManual && (form.kcal || form.proteines || form.glucides || form.lipides)
+        ? {
+            kcal: parseFloat(form.kcal) || 0,
+            proteines: parseFloat(form.proteines) || 0,
+            glucides: parseFloat(form.glucides) || 0,
+            lipides: parseFloat(form.lipides) || 0,
+          }
+        : undefined
+
     createStock(
       {
         name: form.name.trim(),
@@ -151,7 +177,7 @@ export default function AddProvisionScreen() {
         category: form.category,
         state: form.itemState || undefined,
         expiryDate: form.expiryDate ?? undefined,
-        per100g: selectedFood?.per100g,
+        per100g: selectedFood?.per100g ?? manualPer100g,
         source,
         foodProductId: selectedFood?.id,
       },
@@ -159,9 +185,7 @@ export default function AddProvisionScreen() {
         onSuccess: () => {
           ToastAndroid.show('Provision ajoutée !', ToastAndroid.SHORT)
           formSheetRef.current?.dismiss()
-          setSelectedFood(null)
-          setScannedBarcode(null)
-          setSearchQuery('')
+          router.back()
         },
         onError: (error) => {
           if (isAxiosError(error) && error.response?.data?.errors) {
@@ -244,6 +268,8 @@ export default function AddProvisionScreen() {
           c={c}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          searchSource={searchSource}
+          onSourceChange={setSearchSource}
           results={searchResults}
           isLoading={isSearchLoading}
           onSelectFood={openFormWithFood}
@@ -276,6 +302,7 @@ export default function AddProvisionScreen() {
         <BottomSheetScrollView
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={tw`px-4 pt-2 pb-10 gap-5`}
         >
           {/* Titre formulaire */}
@@ -327,6 +354,38 @@ export default function AddProvisionScreen() {
                   },
                 ]}
               />
+            </FormField>
+          )}
+
+          {/* Macros manuels */}
+          {isManual && (
+            <FormField label="Macronutriments /100g (optionnel)">
+              <View style={tw`flex-row gap-2`}>
+                <MacroInput
+                  label="Kcal"
+                  value={form.kcal}
+                  onChangeText={(v) => setField('kcal', v)}
+                  color={c.warning}
+                />
+                <MacroInput
+                  label="Prot."
+                  value={form.proteines}
+                  onChangeText={(v) => setField('proteines', v)}
+                  color={c.primary}
+                />
+                <MacroInput
+                  label="Glu."
+                  value={form.glucides}
+                  onChangeText={(v) => setField('glucides', v)}
+                  color={c.info}
+                />
+                <MacroInput
+                  label="Lip."
+                  value={form.lipides}
+                  onChangeText={(v) => setField('lipides', v)}
+                  color={c.tertiary}
+                />
+              </View>
             </FormField>
           )}
 
@@ -525,10 +584,18 @@ export default function AddProvisionScreen() {
 
 // ─── Sous-composants ─────────────────────────────────────────────────────────
 
+const SEARCH_SOURCES: { key: SearchSource; label: string }[] = [
+  { key: 'ciqual', label: 'Ciqual' },
+  { key: 'off', label: 'OFF' },
+  { key: 'both', label: 'Les deux' },
+]
+
 function SearchTab({
   c,
   searchQuery,
   onSearchChange,
+  searchSource,
+  onSourceChange,
   results,
   isLoading,
   onSelectFood,
@@ -537,6 +604,8 @@ function SearchTab({
   c: ReturnType<typeof useColors>
   searchQuery: string
   onSearchChange: (v: string) => void
+  searchSource: SearchSource
+  onSourceChange: (s: SearchSource) => void
   results: FoodProduct[]
   isLoading: boolean
   onSelectFood: (food: FoodProduct) => void
@@ -544,7 +613,7 @@ function SearchTab({
 }) {
   return (
     <View style={tw`flex-1`}>
-      <View style={tw`px-4 pb-2`}>
+      <View style={tw`px-4 gap-2 pb-2`}>
         <View
           style={[
             tw`flex-row items-center px-4 rounded-xl gap-3`,
@@ -566,6 +635,30 @@ function SearchTab({
               <Ionicons name="close-circle" size={18} color={c.textMuted} />
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* Toggle source */}
+        <View style={[tw`flex-row rounded-xl p-1 gap-1`, { backgroundColor: c.surfaceElevated }]}>
+          {SEARCH_SOURCES.map((s) => {
+            const active = searchSource === s.key
+            return (
+              <TouchableOpacity
+                key={s.key}
+                onPress={() => onSourceChange(s.key)}
+                style={[
+                  tw`flex-1 items-center py-1.5 rounded-lg`,
+                  { backgroundColor: active ? c.primary : 'transparent' },
+                ]}
+              >
+                <Text
+                  variant="caption"
+                  style={{ color: active ? '#FFFFFF' : c.textSecondary, fontWeight: '600' }}
+                >
+                  {s.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
       </View>
 
@@ -617,6 +710,7 @@ function SearchTab({
           keyExtractor={(item) => item.id}
           contentContainerStyle={tw`px-4 pb-8`}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => onSelectFood(item)}
@@ -797,6 +891,44 @@ function MacroCell({ label, value, color }: { label: string; value: number; colo
       <Text variant="label" color="muted">
         {label}
       </Text>
+    </View>
+  )
+}
+
+function MacroInput({
+  label,
+  value,
+  onChangeText,
+  color,
+}: {
+  label: string
+  value: string
+  onChangeText: (v: string) => void
+  color: string
+}) {
+  const c = useColors()
+  return (
+    <View style={tw`flex-1 gap-1`}>
+      <Text variant="label" style={{ color, fontWeight: '700', textAlign: 'center' }}>
+        {label}
+      </Text>
+      <BottomSheetTextInput
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType="numeric"
+        selectTextOnFocus
+        placeholder="–"
+        placeholderTextColor={c.textMuted}
+        style={[
+          tw`rounded-xl text-center`,
+          {
+            color: c.textPrimary,
+            backgroundColor: c.surfaceElevated,
+            height: 44,
+            fontSize: 15,
+          },
+        ]}
+      />
     </View>
   )
 }

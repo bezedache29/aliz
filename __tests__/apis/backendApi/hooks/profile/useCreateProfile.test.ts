@@ -4,6 +4,7 @@ import React from 'react'
 
 import { useCreateProfile } from '@/src/apis/backendApi/hooks/profile/useCreateProfile'
 import type { ProfileDTO } from '@/src/apis/backendApi/dto/profile/profile.dto'
+import type { Profile } from '@/src/models/profile/profile.model'
 import type { OnboardingData } from '@/src/store/onboardingAtom'
 
 import { backendClient } from '@/src/apis/backendApi/client'
@@ -57,8 +58,20 @@ const profileDTO: ProfileDTO = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
+const expectedProfile: Profile = {
+  id: 'p-1',
+  firstName: 'Christophe',
+  age: 43,
+  gender: 'male',
+  heightCm: 178,
+  currentWeightKg: 85.5,
+  targetWeightKg: 75,
+  activityLevel: 'moderate',
+  weightLossRateKg: 0.5,
+}
+
 describe('useCreateProfile', () => {
-  it('retourne le profil créé en cas de succès', async () => {
+  it('retourne le profil mappé en cas de succès', async () => {
     mockedPost.mockResolvedValueOnce({ data: { data: profileDTO } })
     const { result } = await renderHook(() => useCreateProfile(), { wrapper: makeWrapper() })
 
@@ -67,7 +80,7 @@ describe('useCreateProfile', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toEqual(profileDTO)
+    expect(result.current.data).toEqual(expectedProfile)
   })
 
   it("passe en état error en cas d'échec", async () => {

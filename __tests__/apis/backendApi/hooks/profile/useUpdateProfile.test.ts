@@ -4,6 +4,7 @@ import React from 'react'
 
 import { useUpdateProfile } from '@/src/apis/backendApi/hooks/profile/useUpdateProfile'
 import type { ProfileDTO } from '@/src/apis/backendApi/dto/profile/profile.dto'
+import type { Profile } from '@/src/models/profile/profile.model'
 
 import { backendClient } from '@/src/apis/backendApi/client'
 
@@ -43,8 +44,20 @@ const profileDTO: ProfileDTO = {
   updatedAt: '2026-06-01T00:00:00Z',
 }
 
+const expectedProfile: Profile = {
+  id: 'p-1',
+  firstName: 'Chris',
+  age: 43,
+  gender: 'male',
+  heightCm: 178,
+  currentWeightKg: 83,
+  targetWeightKg: 75,
+  activityLevel: 'active',
+  weightLossRateKg: 0.5,
+}
+
 describe('useUpdateProfile', () => {
-  it('retourne le profil mis à jour en cas de succès', async () => {
+  it('retourne le profil mappé en cas de succès', async () => {
     mockedPut.mockResolvedValueOnce({ data: { data: profileDTO } })
     const { result } = await renderHook(() => useUpdateProfile(), { wrapper: makeWrapper() })
 
@@ -53,7 +66,7 @@ describe('useUpdateProfile', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(result.current.data).toEqual(profileDTO)
+    expect(result.current.data).toEqual(expectedProfile)
   })
 
   it("passe en état error en cas d'échec", async () => {
@@ -67,12 +80,12 @@ describe('useUpdateProfile', () => {
     await waitFor(() => expect(result.current.isError).toBe(true))
   })
 
-  it('appelle PUT /api/profile avec les champs mappés', async () => {
+  it('appelle PUT /api/profile avec les champs UpdateProfileDTO directement', async () => {
     mockedPut.mockResolvedValueOnce({ data: { data: profileDTO } })
     const { result } = await renderHook(() => useUpdateProfile(), { wrapper: makeWrapper() })
 
     await act(async () => {
-      await result.current.mutateAsync({ firstName: 'Chris', height: 178 })
+      await result.current.mutateAsync({ firstName: 'Chris', heightCm: 178 })
     })
 
     expect(mockedPut).toHaveBeenCalledWith(

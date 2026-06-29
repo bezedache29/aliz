@@ -48,6 +48,15 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
+        name="preferences"
+        options={{
+          drawerLabel: 'Préférences alimentaires',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="heart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
         name="settings"
         options={{
           drawerLabel: 'Réglages',

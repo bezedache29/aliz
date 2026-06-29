@@ -1,16 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { backendClient } from '@/src/apis/backendApi/client'
-import type { ProfileDTO, ProfileResponseDTO } from '@/src/apis/backendApi/dto/profile/profile.dto'
-import { onboardingDataToUpdateDTO } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
-import type { OnboardingData } from '@/src/store/onboardingAtom'
+import type {
+  ProfileResponseDTO,
+  UpdateProfileDTO,
+} from '@/src/apis/backendApi/dto/profile/profile.dto'
+import { profileDTOtoProfile } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
+import type { Profile } from '@/src/models/profile/profile.model'
 
-async function fetchUpdateProfile(data: Partial<OnboardingData>): Promise<ProfileDTO> {
-  const { data: res } = await backendClient.put<ProfileResponseDTO>(
-    '/api/profile',
-    onboardingDataToUpdateDTO(data),
-  )
-  return res.data
+async function fetchUpdateProfile(data: UpdateProfileDTO): Promise<Profile> {
+  const { data: res } = await backendClient.put<ProfileResponseDTO>('/api/profile', data)
+  return profileDTOtoProfile(res.data)
 }
 
 export function useUpdateProfile() {
@@ -18,7 +18,7 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: fetchUpdateProfile,
     onSuccess: (profile) => {
-      queryClient.setQueryData(['profile'], profile)
+      queryClient.setQueryData<Profile>(['profile'], profile)
     },
   })
 }

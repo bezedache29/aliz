@@ -23,6 +23,11 @@ jest.mock('@/src/apis/backendApi/hooks/weight/useDeleteWeight', () => ({
   useDeleteWeight: () => ({ mutate: mockDeleteWeight }),
 }))
 
+// AvatarButton dépend de useNavigation (contexte expo-router absent en test unitaire)
+jest.mock('@/src/components/avatar-button', () => ({
+  AvatarButton: () => null,
+}))
+
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const { View, Text: RNText } = require('react-native')

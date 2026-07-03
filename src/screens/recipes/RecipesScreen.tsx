@@ -16,7 +16,7 @@ import tw from 'twrnc'
 import { useDeleteRecipe } from '@/src/apis/backendApi/hooks/recipes/useDeleteRecipe'
 import { useRecipes } from '@/src/apis/backendApi/hooks/recipes/useRecipes'
 import { useUpdateRecipe } from '@/src/apis/backendApi/hooks/recipes/useUpdateRecipe'
-import { Badge } from '@/src/components/badge'
+import { AvatarButton } from '@/src/components/avatar-button'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import {
@@ -106,8 +106,13 @@ export default function RecipesScreen() {
     filters.cookingMethod !== null,
   ].filter(Boolean).length
 
+  const sourceRecipes = useMemo(
+    () => (activeTab === 'my' ? recipes : recipes.filter((r) => r.isAiGenerated)),
+    [recipes, activeTab],
+  )
+
   const filteredRecipes = useMemo(() => {
-    let result = searchRecipes(recipes, searchQuery)
+    let result = searchRecipes(sourceRecipes, searchQuery)
     if (filters.favoriteOnly) result = result.filter((r) => r.isFavorite)
     if (filters.maxTime !== null) {
       result = result.filter((r) => (r.prepTime ?? 0) + (r.cookTime ?? 0) <= filters.maxTime!)
@@ -124,7 +129,7 @@ export default function RecipesScreen() {
       result = result.filter((r) => r.cookingMethod === filters.cookingMethod)
     }
     return result
-  }, [recipes, searchQuery, filters])
+  }, [sourceRecipes, searchQuery, filters])
 
   const categoryList = useMemo(() => {
     if (!filters.category) return null
@@ -181,9 +186,16 @@ export default function RecipesScreen() {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[tw`flex-1`, { backgroundColor: c.background }]}
     >
+      <View style={tw`flex-row items-center justify-between px-4 pt-4 pb-4`}>
+        <Text variant="heading1" style={{ fontWeight: '700' }}>
+          Recettes
+        </Text>
+        <AvatarButton />
+      </View>
+
       {/* Onglets */}
       <View style={tw`flex-row gap-2 px-4 pt-4 pb-2`}>
         {TABS.map((tab) => {
@@ -209,96 +221,97 @@ export default function RecipesScreen() {
         })}
       </View>
 
-      {activeTab === 'my' ? (
-        <View style={tw`flex-1`}>
-          {isLoading ? (
-            <View style={tw`flex-1 items-center justify-center`}>
-              <ActivityIndicator color={c.primary} />
-            </View>
-          ) : isEmpty ? (
-            <ScrollView
-              contentContainerStyle={tw`px-4 pt-3 pb-28`}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
+      <View style={tw`flex-1`}>
+        {isLoading ? (
+          <View style={tw`flex-1 items-center justify-center`}>
+            <ActivityIndicator color={c.primary} />
+          </View>
+        ) : isEmpty ? (
+          <ScrollView
+            contentContainerStyle={tw`px-4 pt-3 pb-28`}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
+            }
+          >
+            <SearchAndFilters {...searchAndFiltersProps} />
+            <EmptyState
+              variant={activeTab}
+              hasFilters={activeFilterCount > 0 || searchQuery.length > 0}
+              onCreatePress={() =>
+                router.push(activeTab === 'my' ? '/recipe-create' : '/recipe-generate')
               }
-            >
-              <SearchAndFilters {...searchAndFiltersProps} />
-              <EmptyState
-                hasFilters={activeFilterCount > 0 || searchQuery.length > 0}
-                onCreatePress={() => router.push('/recipe-create')}
-                onReset={() => {
-                  resetFilters()
-                  setSearchQuery('')
-                }}
+              onReset={() => {
+                resetFilters()
+                setSearchQuery('')
+              }}
+            />
+          </ScrollView>
+        ) : categoryList !== null ? (
+          <FlatList
+            data={categoryList}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={tw`px-4 pt-3 pb-28`}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
+            }
+            ListHeaderComponent={<SearchAndFilters {...searchAndFiltersProps} />}
+            renderItem={({ item }) => (
+              <RecipeCard
+                recipe={item}
+                onToggleFavorite={handleToggleFavorite}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
-            </ScrollView>
-          ) : categoryList !== null ? (
-            <FlatList
-              data={categoryList}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={tw`px-4 pt-3 pb-28`}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
-              }
-              ListHeaderComponent={<SearchAndFilters {...searchAndFiltersProps} />}
-              renderItem={({ item }) => (
-                <RecipeCard
-                  recipe={item}
-                  onToggleFavorite={handleToggleFavorite}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              )}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : (
-            <SectionList
-              sections={sections}
-              keyExtractor={(item) => item.id}
-              stickySectionHeadersEnabled={false}
-              contentContainerStyle={tw`px-4 pt-3 pb-28`}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
-              }
-              ListHeaderComponent={<SearchAndFilters {...searchAndFiltersProps} />}
-              renderSectionHeader={({ section: { title } }) => (
-                <CategorySectionHeader title={title} />
-              )}
-              renderItem={({ item }) => (
-                <RecipeCard
-                  recipe={item}
-                  onToggleFavorite={handleToggleFavorite}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              )}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
-      ) : (
-        <AiPlaceholder />
-      )}
+            )}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={(item) => item.id}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={tw`px-4 pt-3 pb-28`}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
+            }
+            ListHeaderComponent={<SearchAndFilters {...searchAndFiltersProps} />}
+            renderSectionHeader={({ section: { title } }) => (
+              <CategorySectionHeader title={title} />
+            )}
+            renderItem={({ item }) => (
+              <RecipeCard
+                recipe={item}
+                onToggleFavorite={handleToggleFavorite}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
 
       {/* FAB */}
-      {activeTab === 'my' && (
-        <TouchableOpacity
-          onPress={() => router.push('/recipe-create')}
-          style={[
-            tw`absolute bottom-12 right-6 w-14 h-14 rounded-full items-center justify-center`,
-            {
-              backgroundColor: c.primary,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.25,
-              shadowRadius: 8,
-              elevation: 8,
-            },
-          ]}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        onPress={() => router.push(activeTab === 'my' ? '/recipe-create' : '/recipe-generate')}
+        style={[
+          tw`absolute bottom-12 right-6 w-14 h-14 rounded-full items-center justify-center`,
+          {
+            backgroundColor: c.primary,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 8,
+          },
+        ]}
+      >
+        <Ionicons
+          name={activeTab === 'my' ? 'add' : 'sparkles-outline'}
+          size={28}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   )
 }
@@ -546,15 +559,18 @@ function CategorySectionHeader({ title }: { title: string }) {
 }
 
 function EmptyState({
+  variant,
   hasFilters,
   onCreatePress,
   onReset,
 }: {
+  variant: 'my' | 'ai'
   hasFilters: boolean
   onCreatePress: () => void
   onReset: () => void
 }) {
   const c = useColors()
+  const isAi = variant === 'ai'
   return (
     <View style={tw`items-center pt-12 px-8 gap-4`}>
       <View
@@ -564,18 +580,20 @@ function EmptyState({
         ]}
       >
         <Ionicons
-          name={hasFilters ? 'filter-outline' : 'book-outline'}
+          name={hasFilters ? 'filter-outline' : isAi ? 'sparkles-outline' : 'book-outline'}
           size={36}
           color={c.primary}
         />
       </View>
       <Text variant="heading3" style={{ fontWeight: '700', textAlign: 'center' }}>
-        {hasFilters ? 'Aucune recette trouvée' : 'Aucune recette'}
+        {hasFilters ? 'Aucune recette trouvée' : isAi ? 'Aucune recette IA' : 'Aucune recette'}
       </Text>
       <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
         {hasFilters
           ? 'Aucune recette ne correspond à ces filtres.'
-          : "Tu n'as pas encore de recette enregistrée. Crée ta première recette pour commencer !"}
+          : isAi
+            ? "Tu n'as pas encore généré de recette avec l'IA. Décris tes envies et laisse-la faire !"
+            : "Tu n'as pas encore de recette enregistrée. Crée ta première recette pour commencer !"}
       </Text>
       {hasFilters ? (
         <TouchableOpacity
@@ -598,37 +616,12 @@ function EmptyState({
             { backgroundColor: c.primary },
           ]}
         >
-          <Ionicons name="add" size={18} color="#FFFFFF" />
+          <Ionicons name={isAi ? 'sparkles-outline' : 'add'} size={18} color="#FFFFFF" />
           <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-            Créer ma première recette
+            {isAi ? 'Générer une recette' : 'Créer ma première recette'}
           </Text>
         </TouchableOpacity>
       )}
-    </View>
-  )
-}
-
-function AiPlaceholder() {
-  const c = useColors()
-  return (
-    <View style={tw`flex-1 items-center pt-16 px-8 gap-4`}>
-      <View
-        style={[
-          tw`w-20 h-20 rounded-full items-center justify-center`,
-          { backgroundColor: c.tertiary + '20' },
-        ]}
-      >
-        <Ionicons name="bulb-outline" size={36} color={c.tertiary} />
-      </View>
-      <Text variant="heading3" style={{ fontWeight: '700', textAlign: 'center' }}>
-        Recettes IA
-      </Text>
-      <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
-        {
-          "Laisse l'IA générer des recettes adaptées à tes objectifs nutritionnels et tes préférences."
-        }
-      </Text>
-      <Badge label="Bientôt disponible" variant="neutral" />
     </View>
   )
 }

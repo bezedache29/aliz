@@ -21,11 +21,13 @@ export function AvatarButton() {
           height: 36,
           borderRadius: 18,
           backgroundColor: c.surfaceElevated,
+          borderWidth: 1.5,
+          borderColor: c.primary + '40',
           justifyContent: 'center',
           alignItems: 'center',
         }}
       >
-        <Ionicons name="person" size={18} color={c.textMuted} />
+        <Ionicons name="person" size={16} color={c.primary} />
       </View>
     </Pressable>
   )

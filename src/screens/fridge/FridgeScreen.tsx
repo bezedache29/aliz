@@ -25,6 +25,7 @@ import { Calendar } from 'react-native-calendars'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { AvatarButton } from '@/src/components/avatar-button'
 import { Button } from '@/src/components/button'
 import { Text } from '@/src/components/text'
 import { CATEGORY_ICONS, ProvisionCard } from '@/src/features/provisions/ProvisionCard'
@@ -156,9 +157,16 @@ export default function FridgeScreen() {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[tw`flex-1`, { backgroundColor: c.background }]}
     >
+      <View style={tw`flex-row items-center justify-between px-4 pt-4 pb-4`}>
+        <Text variant="heading1" style={{ fontWeight: '700' }}>
+          Provisions
+        </Text>
+        <AvatarButton />
+      </View>
+
       {/* Alerte DLC */}
       {alertItems.length > 0 && (
         <View

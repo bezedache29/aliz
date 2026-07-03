@@ -1,0 +1,14 @@
+diff --git a/node_modules/expo-dev-launcher/android/src/main/java/expo/modules/devlauncher/splashscreen/DevLauncherSplashScreen.kt b/node_modules/expo-dev-launcher/android/src/main/java/expo/modules/devlauncher/splashscreen/DevLauncherSplashScreen.kt
+index cf077f6..d823f6e 100644
+--- a/node_modules/expo-dev-launcher/android/src/main/java/expo/modules/devlauncher/splashscreen/DevLauncherSplashScreen.kt
++++ b/node_modules/expo-dev-launcher/android/src/main/java/expo/modules/devlauncher/splashscreen/DevLauncherSplashScreen.kt
+@@ -13,7 +13,8 @@ class DevLauncherSplashScreen(
+   context: Context
+ ) : RelativeLayout(context) {
+   init {
+-    setBackgroundColor(Color.WHITE)
++    val bgColorRes = context.resources.getIdentifier("splashscreen_background", "color", context.packageName)
++    setBackgroundColor(if (bgColorRes != 0) context.getColor(bgColorRes) else Color.WHITE)
+ 
+     val imageWidthDPI = 85f
+     val imageWidthPixels = TypedValue.applyDimension(

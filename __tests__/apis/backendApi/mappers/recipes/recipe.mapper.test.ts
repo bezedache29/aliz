@@ -94,6 +94,12 @@ describe('recipeDTOtoRecipe', () => {
     expect(result.servings).toBeUndefined()
     expect(result.seasons).toBeUndefined()
     expect(result.cookingMethod).toBeUndefined()
+    expect(result.isAiGenerated).toBeUndefined()
+  })
+
+  it('maps isAiGenerated when present', () => {
+    const result = recipeDTOtoRecipe({ ...recipeDTO, isAiGenerated: true })
+    expect(result.isAiGenerated).toBe(true)
   })
 
   it('maps steps array', () => {
@@ -199,6 +205,18 @@ describe('recipeToCreateDTO', () => {
     const dto = recipeToCreateDTO(recipeWithoutId)
     expect((dto as Record<string, unknown>).id).toBeUndefined()
     expect((dto as Record<string, unknown>).isFavorite).toBeUndefined()
+  })
+
+  it('forwards isAiGenerated when true', () => {
+    const { id: _id, isFavorite: _fav, ...recipeWithoutId } = recipe
+    const dto = recipeToCreateDTO({ ...recipeWithoutId, isAiGenerated: true })
+    expect(dto.isAiGenerated).toBe(true)
+  })
+
+  it('leaves isAiGenerated undefined when absent', () => {
+    const { id: _id, isFavorite: _fav, ...recipeWithoutId } = recipe
+    const dto = recipeToCreateDTO(recipeWithoutId)
+    expect(dto.isAiGenerated).toBeUndefined()
   })
 })
 

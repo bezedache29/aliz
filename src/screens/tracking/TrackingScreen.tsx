@@ -6,6 +6,7 @@ import tw from 'twrnc'
 
 import { useDeleteWeight } from '@/src/apis/backendApi/hooks/weight/useDeleteWeight'
 import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
+import { AvatarButton } from '@/src/components/avatar-button'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Card } from '@/src/components/card'
 import { StatItem } from '@/src/components/stat-item'
@@ -56,9 +57,16 @@ export default function TrackingScreen() {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
+      <View style={tw`flex-row items-center justify-between px-4 pt-4 pb-4`}>
+        <Text variant="heading1" style={{ fontWeight: '700' }}>
+          Suivi
+        </Text>
+        <AvatarButton />
+      </View>
+
       <ScrollView
         contentContainerStyle={tw`p-4 gap-4`}
         refreshControl={
@@ -70,8 +78,6 @@ export default function TrackingScreen() {
           />
         }
       >
-        <Text variant="heading1">Suivi</Text>
-
         <Card>
           <View style={tw`flex-row justify-between items-center`}>
             <Text variant="label" color="muted" uppercase>

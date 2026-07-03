@@ -12,6 +12,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      detachInactiveScreens={false}
       screenOptions={{
         lazy: false,
         tabBarActiveTintColor: c.primary,

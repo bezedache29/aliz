@@ -41,6 +41,7 @@ export interface Recipe {
   ingredients: RecipeIngredient[]
   steps: string[]
   isFavorite?: boolean
+  isAiGenerated?: boolean
   prepTime?: number
   cookTime?: number
   servings?: number

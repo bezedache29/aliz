@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
+import { AvatarButton } from '@/src/components/avatar-button'
 import { Card } from '@/src/components/card'
 import { CircleBar } from '@/src/components/circle-bar'
 import { StatItem } from '@/src/components/stat-item'
@@ -135,22 +136,27 @@ export default function JournalScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[tw`flex-1`, { backgroundColor: c.background }]}
+    >
+      <View style={tw`flex-row items-center justify-between px-4 pt-4 pb-4`}>
+        <Text variant="heading1" style={{ fontWeight: '700' }}>
+          {onboarding.firstName ? `Bonjour, ${onboarding.firstName} !` : 'Bonjour !'}
+        </Text>
+        <AvatarButton />
+      </View>
+
       <ScrollView
-        contentContainerStyle={tw`p-4 gap-4`}
+        contentContainerStyle={tw`p-4 gap-4 pt-1`}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[c.primary]} />
         }
       >
-        <View style={tw`gap-1`}>
-          <Text variant="heading1">
-            {onboarding.firstName ? `Bonjour, ${onboarding.firstName} !` : 'Bonjour !'}
-          </Text>
-          <Text variant="body" color="secondary">
-            {dateFormatted}
-          </Text>
-        </View>
+        <Text variant="body" color="secondary">
+          {dateFormatted}
+        </Text>
 
         {goals && (
           <Card>

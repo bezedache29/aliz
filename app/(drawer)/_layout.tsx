@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { Drawer } from 'expo-router/drawer'
 
-import { AvatarButton } from '@/src/components/avatar-button'
 import { useColors } from '@/src/hooks/use-colors'
 
 export default function DrawerLayout() {
@@ -29,12 +28,7 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="(tabs)"
         options={{
-          headerShown: true,
-          headerStyle: { backgroundColor: c.background },
-          headerShadowVisible: false,
-          headerTitle: '',
-          headerLeft: () => null,
-          headerRight: () => <AvatarButton />,
+          headerShown: false,
           drawerItemStyle: { display: 'none' },
         }}
       />

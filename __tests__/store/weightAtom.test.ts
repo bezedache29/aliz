@@ -3,12 +3,19 @@ import { createStore } from 'jotai'
 import { type WeightEntry } from '@/src/models/weight/weight.model'
 import { weightHistoryAtom } from '@/src/store/weightAtom'
 
-// Helper pour créer une entrée de poids
 const makeEntry = (overrides: Partial<WeightEntry> = {}): WeightEntry => ({
   id: '1',
-  date: '2026-06-25T07:00:00.000Z',
+  measuredAt: '2026-06-25T07:00:00.000Z',
   weight: 75.5,
-  source: 'manual',
+  bmi: null,
+  bodyfat: null,
+  water: null,
+  muscle: null,
+  bone: null,
+  bmr: null,
+  protein: null,
+  bodyAge: null,
+  heartRate: null,
   ...overrides,
 })
 
@@ -31,7 +38,7 @@ describe('weightHistoryAtom', () => {
     const first = makeEntry({ id: '1', weight: 76.0 })
     store.set(weightHistoryAtom, [first])
 
-    const second = makeEntry({ id: '2', weight: 75.5, date: '2026-06-26T07:00:00.000Z' })
+    const second = makeEntry({ id: '2', weight: 75.5, measuredAt: '2026-06-26T07:00:00.000Z' })
     store.set(weightHistoryAtom, (prev) => [...prev, second])
 
     expect(store.get(weightHistoryAtom)).toHaveLength(2)
@@ -53,17 +60,23 @@ describe('weightHistoryAtom', () => {
     const store = createStore()
     const entry = makeEntry({
       id: 'abc',
-      date: '2026-06-25T07:00:00.000Z',
+      measuredAt: '2026-06-25T07:00:00.000Z',
       weight: 74.2,
-      bodyFatPercentage: 18.5,
-      muscleMass: 32.1,
-      source: 'renpho',
+      bodyfat: 18.5,
+      muscle: 32.1,
+      bmi: 24.1,
+      water: 55.2,
+      bone: 3.4,
+      bmr: 1800.0,
+      protein: 14.0,
+      bodyAge: 40.0,
+      heartRate: 68.0,
     })
     store.set(weightHistoryAtom, [entry])
 
     const saved = store.get(weightHistoryAtom)[0]
-    expect(saved.bodyFatPercentage).toBe(18.5)
-    expect(saved.muscleMass).toBe(32.1)
-    expect(saved.source).toBe('renpho')
+    expect(saved.bodyfat).toBe(18.5)
+    expect(saved.muscle).toBe(32.1)
+    expect(saved.bmi).toBe(24.1)
   })
 })

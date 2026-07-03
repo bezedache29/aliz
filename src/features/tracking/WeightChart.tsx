@@ -28,7 +28,8 @@ const CHART_PADDING_V = 16
 export function WeightChart({ entries, targetWeight }: Props) {
   const c = useColors()
 
-  if (entries.length < 2) {
+  const withWeight = entries.filter((e): e is typeof e & { weight: number } => e.weight !== null)
+  if (withWeight.length < 2) {
     return (
       <View style={[tw`items-center justify-center`, { height: CHART_HEIGHT }]}>
         <Text variant="caption" color="muted">
@@ -37,8 +38,9 @@ export function WeightChart({ entries, targetWeight }: Props) {
       </View>
     )
   }
-
-  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date)).slice(-30)
+  const sorted = [...withWeight]
+    .sort((a, b) => (a.measuredAt < b.measuredAt ? -1 : a.measuredAt > b.measuredAt ? 1 : 0))
+    .slice(-30)
   const weights = sorted.map((e) => e.weight)
   const minW = Math.min(...weights, targetWeight ?? Infinity) - 1
   const maxW = Math.max(...weights) + 1
@@ -65,8 +67,8 @@ export function WeightChart({ entries, targetWeight }: Props) {
 
   const targetY = targetWeight ? yFor(targetWeight) : null
 
-  const firstDate = dayjs(sorted[0].date).format('D MMM')
-  const lastDate = dayjs(sorted[sorted.length - 1].date).format('D MMM')
+  const firstDate = dayjs(sorted[0].measuredAt).format('D MMM')
+  const lastDate = dayjs(sorted[sorted.length - 1].measuredAt).format('D MMM')
 
   return (
     <View>

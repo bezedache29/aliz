@@ -3,13 +3,14 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet'
 import { useRouter } from 'expo-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { RefreshControl, View } from 'react-native'
+import { RefreshControl, TouchableOpacity, View } from 'react-native'
 import { MealItemEditSheet } from '@/src/features/planning/MealItemEditSheet'
 
 import { ScrollView } from '@/src/components/scroll-view'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import { Card } from '@/src/components/card'
 import { CircleBar } from '@/src/components/circle-bar'
 import { StatItem } from '@/src/components/stat-item'
@@ -77,8 +78,25 @@ export default function JournalScreen() {
   const burned = 0
   const remaining = goals ? Math.max(0, goals.dailyKcalAdjusted - consumedKcal + burned) : 0
 
-  // Phase 5 : remplacer par la comparaison avec la pesée précédente
-  const weightTrend: 'up' | 'stable' | 'down' = 'stable'
+  const { data: weightHistory = [], isLoading: weightLoading } = useWeightHistory()
+  const sortedWeights = [...weightHistory]
+    .filter((e) => !!e.measuredAt)
+    .sort((a, b) => (b.measuredAt < a.measuredAt ? -1 : b.measuredAt > a.measuredAt ? 1 : 0))
+  const latestWeight = sortedWeights[0] ?? null
+
+  function computeWeightTrend(): 'up' | 'stable' | 'down' {
+    const withWeight = weightHistory.filter((e) => e.weight !== null && !!e.measuredAt)
+    if (withWeight.length < 2) return 'stable'
+    const asc = [...withWeight].sort((a, b) =>
+      a.measuredAt! < b.measuredAt! ? -1 : a.measuredAt! > b.measuredAt! ? 1 : 0,
+    )
+    const diff = asc[asc.length - 1].weight! - asc[asc.length - 2].weight!
+    if (diff > 0.2) return 'up'
+    if (diff < -0.2) return 'down'
+    return 'stable'
+  }
+
+  const weightTrend = computeWeightTrend()
   const weightTrendIcons = {
     up: 'trending-up',
     stable: 'remove-outline',
@@ -298,65 +316,78 @@ export default function JournalScreen() {
           </Card>
         )}
 
-        {onboarding.currentWeight && (
-          <Card>
-            <View style={tw`flex-row justify-between items-center`}>
-              <Text variant="label" color="muted" uppercase>
-                Poids
-              </Text>
-              <View
-                style={[
-                  tw`flex-row items-center gap-1 px-2 rounded-full`,
-                  { paddingVertical: 4, backgroundColor: c.surfaceElevated },
-                ]}
-              >
-                <Ionicons name={weightTrendIcon} size={13} color={weightTrendColor} />
-                <Text variant="label" style={{ color: weightTrendColor }}>
-                  {{ up: 'En hausse', stable: 'Stable', down: 'En baisse' }[weightTrend]}
+        {!weightLoading && (latestWeight ?? onboarding.currentWeight) && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/(drawer)/(tabs)/tracking')}
+          >
+            <Card>
+              <View style={tw`flex-row justify-between items-center`}>
+                <Text variant="label" color="muted" uppercase>
+                  Poids
                 </Text>
-              </View>
-            </View>
-
-            <View style={[tw`items-center`, { marginVertical: spacing.lg }]}>
-              <View style={tw`flex-row items-end`}>
-                <Text
-                  style={{
-                    fontSize: 64,
-                    fontWeight: '900',
-                    lineHeight: 64,
-                    color: c.textPrimary,
-                    letterSpacing: -2,
-                  }}
-                >
-                  {onboarding.currentWeight}
-                </Text>
-                <Text variant="heading2" color="muted" style={{ marginBottom: 6, marginLeft: 6 }}>
-                  kg
-                </Text>
-              </View>
-            </View>
-
-            {onboarding.targetWeight && (
-              <>
-                <View style={[tw`h-px`, { backgroundColor: c.border }]} />
-                <View
-                  style={[tw`flex-row justify-between items-center`, { marginTop: spacing.md }]}
-                >
-                  <Text variant="caption" color="secondary">
-                    Objectif
-                  </Text>
-                  <View style={tw`flex-row items-end gap-1`}>
-                    <Text variant="heading3" style={{ fontWeight: '600' }}>
-                      {onboarding.targetWeight}
-                    </Text>
-                    <Text variant="caption" color="muted" style={{ marginBottom: 2 }}>
-                      kg
+                <View style={tw`flex-row items-center gap-2`}>
+                  <View
+                    style={[
+                      tw`flex-row items-center gap-1 px-2 rounded-full`,
+                      { paddingVertical: 4, backgroundColor: c.surfaceElevated },
+                    ]}
+                  >
+                    <Ionicons name={weightTrendIcon} size={13} color={weightTrendColor} />
+                    <Text variant="label" style={{ color: weightTrendColor }}>
+                      {{ up: 'En hausse', stable: 'Stable', down: 'En baisse' }[weightTrend]}
                     </Text>
                   </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
                 </View>
-              </>
-            )}
-          </Card>
+              </View>
+
+              <View style={[tw`items-center`, { marginVertical: spacing.lg }]}>
+                <View style={tw`flex-row items-end`}>
+                  <Text
+                    style={{
+                      fontSize: 64,
+                      fontWeight: '900',
+                      lineHeight: 64,
+                      color: c.textPrimary,
+                      letterSpacing: -2,
+                    }}
+                  >
+                    {latestWeight?.weight?.toFixed(1) ?? onboarding.currentWeight}
+                  </Text>
+                  <Text variant="heading2" color="muted" style={{ marginBottom: 6, marginLeft: 6 }}>
+                    kg
+                  </Text>
+                </View>
+                {latestWeight?.measuredAt && (
+                  <Text variant="caption" color="muted">
+                    {dayjs(latestWeight.measuredAt).format('dddd D MMMM')}
+                  </Text>
+                )}
+              </View>
+
+              {onboarding.targetWeight && (
+                <>
+                  <View style={[tw`h-px`, { backgroundColor: c.border }]} />
+                  <View
+                    style={[tw`flex-row justify-between items-center`, { marginTop: spacing.md }]}
+                  >
+                    <Text variant="caption" color="secondary">
+                      Objectif
+                    </Text>
+                    <View style={tw`flex-row items-end gap-1`}>
+                      <Text variant="heading3" style={{ fontWeight: '600' }}>
+                        {onboarding.targetWeight}
+                      </Text>
+                      <Text variant="caption" color="muted" style={{ marginBottom: 2 }}>
+                        kg
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+            </Card>
+          </TouchableOpacity>
         )}
       </ScrollView>
 

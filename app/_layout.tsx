@@ -14,10 +14,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
+import { useWeightSync } from '@/src/apis/backendApi/hooks/weight/useWeightSync'
 import { profileToOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { CustomSplash } from '@/src/components/custom-splash'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
+
+function WeightSync() {
+  const { mutate: sync } = useWeightSync()
+
+  useEffect(() => {
+    sync()
+  }, [sync])
+
+  return null
+}
 
 function ProfileSync() {
   const { data: profile } = useProfile()
@@ -95,6 +106,7 @@ export default function RootLayout() {
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <BottomSheetModalProvider>
               <ProfileSync />
+              <WeightSync />
               <Stack>
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />

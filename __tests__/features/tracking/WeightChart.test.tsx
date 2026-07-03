@@ -32,9 +32,17 @@ jest.mock('react-native-svg', () => {
 
 const makeEntry = (overrides: Partial<WeightEntry> = {}): WeightEntry => ({
   id: '1',
-  date: '2026-06-25T07:00:00.000Z',
+  measuredAt: '2026-06-25T07:00:00.000Z',
   weight: 75.0,
-  source: 'manual',
+  bmi: null,
+  bodyfat: null,
+  water: null,
+  muscle: null,
+  bone: null,
+  bmr: null,
+  protein: null,
+  bodyAge: null,
+  heartRate: null,
   ...overrides,
 })
 
@@ -51,8 +59,8 @@ describe('WeightChart', () => {
 
   it('affiche les dates de début et de fin avec 2 entrées', async () => {
     const entries = [
-      makeEntry({ id: '1', date: '2026-06-20T07:00:00.000Z', weight: 76.0 }),
-      makeEntry({ id: '2', date: '2026-06-25T07:00:00.000Z', weight: 75.0 }),
+      makeEntry({ id: '1', measuredAt: '2026-06-20T07:00:00.000Z', weight: 76.0 }),
+      makeEntry({ id: '2', measuredAt: '2026-06-25T07:00:00.000Z', weight: 75.0 }),
     ]
     const { getByText } = await render(<WeightChart entries={entries} />)
     // Les dates formatées en "D MMM" (français)
@@ -64,7 +72,7 @@ describe('WeightChart', () => {
     const entries = Array.from({ length: 5 }, (_, i) =>
       makeEntry({
         id: String(i),
-        date: `2026-06-${20 + i}T07:00:00.000Z`,
+        measuredAt: `2026-06-${20 + i}T07:00:00.000Z`,
         weight: 76 - i * 0.2,
       }),
     )
@@ -77,12 +85,18 @@ describe('WeightChart', () => {
     const entries = Array.from({ length: 35 }, (_, i) =>
       makeEntry({
         id: String(i),
-        date: new Date(2026, 0, i + 1).toISOString(),
+        measuredAt: new Date(2026, 0, i + 1).toISOString(),
         weight: 80 - i * 0.1,
       }),
     )
     // Doit se rendre sans erreur (pas de crash avec beaucoup de points)
     const { toJSON } = await render(<WeightChart entries={entries} />)
     expect(toJSON()).not.toBeNull()
+  })
+
+  it('affiche un message quand toutes les pesées ont un poids null', async () => {
+    const entries = [makeEntry({ id: '1', weight: null }), makeEntry({ id: '2', weight: null })]
+    const { getByText } = await render(<WeightChart entries={entries} />)
+    expect(getByText(/au moins 2 pesées/i)).toBeTruthy()
   })
 })

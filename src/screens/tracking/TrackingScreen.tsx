@@ -1,29 +1,31 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { BottomSheetModal } from '@gorhom/bottom-sheet'
-import { useAtom, useAtomValue } from 'jotai'
-import { useRef } from 'react'
-import { RefreshControl, TouchableOpacity, View } from 'react-native'
-
-import { ScrollView } from '@/src/components/scroll-view'
+import { useAtomValue } from 'jotai'
+import { ActivityIndicator, RefreshControl, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useDeleteWeight } from '@/src/apis/backendApi/hooks/weight/useDeleteWeight'
+import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
+import { ScrollView } from '@/src/components/scroll-view'
 import { Card } from '@/src/components/card'
 import { StatItem } from '@/src/components/stat-item'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
-import { AddWeightSheet } from '@/src/features/tracking/AddWeightSheet'
 import { WeightChart } from '@/src/features/tracking/WeightChart'
 import { useColors } from '@/src/hooks/use-colors'
 import { useRefresh } from '@/src/hooks/use-refresh'
 import { type WeightEntry } from '@/src/models/weight/weight.model'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
-import { weightHistoryAtom } from '@/src/store/weightAtom'
 import { spacing } from '@/src/styles/design-tokens'
 
 function weightTrend(entries: WeightEntry[]): 'up' | 'stable' | 'down' {
-  if (entries.length < 2) return 'stable'
-  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date))
+  const withWeight = entries.filter(
+    (e): e is WeightEntry & { weight: number } => e.weight !== null && !!e.measuredAt,
+  )
+  if (withWeight.length < 2) return 'stable'
+  const sorted = [...withWeight].sort((a, b) =>
+    a.measuredAt < b.measuredAt ? -1 : a.measuredAt > b.measuredAt ? 1 : 0,
+  )
   const diff = sorted[sorted.length - 1].weight - sorted[sorted.length - 2].weight
   if (diff > 0.2) return 'up'
   if (diff < -0.2) return 'down'
@@ -32,12 +34,14 @@ function weightTrend(entries: WeightEntry[]): 'up' | 'stable' | 'down' {
 
 export default function TrackingScreen() {
   const c = useColors()
-  const { refreshing, refresh } = useRefresh()
   const onboarding = useAtomValue(onboardingAtom)
-  const [history, setHistory] = useAtom(weightHistoryAtom)
-  const addSheetRef = useRef<BottomSheetModal>(null)
+  const { data: history = [], isLoading, refetch } = useWeightHistory()
+  const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
+  const { mutate: deleteWeight } = useDeleteWeight()
 
-  const sorted = [...history].sort((a, b) => b.date.localeCompare(a.date))
+  const sorted = [...history]
+    .filter((e) => !!e.measuredAt)
+    .sort((a, b) => (b.measuredAt < a.measuredAt ? -1 : b.measuredAt > a.measuredAt ? 1 : 0))
   const latest = sorted[0]
   const trend = weightTrend(history)
 
@@ -46,24 +50,9 @@ export default function TrackingScreen() {
   const trendLabel = { up: 'En hausse', stable: 'Stable', down: 'En baisse' }
 
   const kgToGoal =
-    latest && onboarding.targetWeight
+    latest?.weight != null && onboarding.targetWeight
       ? Math.abs(latest.weight - onboarding.targetWeight).toFixed(1)
       : null
-
-  function handleSaveWeight(weight: number) {
-    const entry: WeightEntry = {
-      id: Date.now().toString(),
-      date: dayjs().toISOString(),
-      weight,
-      source: 'manual',
-    }
-    setHistory((prev) => [...prev, entry])
-    addSheetRef.current?.dismiss()
-  }
-
-  function handleDelete(id: string) {
-    setHistory((prev) => prev.filter((e) => e.id !== id))
-  }
 
   return (
     <SafeAreaView
@@ -88,36 +77,26 @@ export default function TrackingScreen() {
             <Text variant="label" color="muted" uppercase>
               Poids
             </Text>
-            <View style={tw`flex-row items-center gap-2`}>
-              {history.length > 0 && (
-                <View
-                  style={[
-                    tw`flex-row items-center gap-1 px-2 rounded-full`,
-                    { paddingVertical: 4, backgroundColor: c.surfaceElevated },
-                  ]}
-                >
-                  <Ionicons name={trendIcon[trend]} size={13} color={trendColor[trend]} />
-                  <Text variant="label" style={{ color: trendColor[trend] }}>
-                    {trendLabel[trend]}
-                  </Text>
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={() => addSheetRef.current?.present()}
+            {history.length > 0 && (
+              <View
                 style={[
-                  tw`flex-row items-center gap-1 px-3 rounded-full`,
-                  { paddingVertical: 6, backgroundColor: c.primary + '20' },
+                  tw`flex-row items-center gap-1 px-2 rounded-full`,
+                  { paddingVertical: 4, backgroundColor: c.surfaceElevated },
                 ]}
               >
-                <Ionicons name="add" size={14} color={c.primary} />
-                <Text variant="label" style={{ color: c.primary, fontWeight: '600' }}>
-                  Peser
+                <Ionicons name={trendIcon[trend]} size={13} color={trendColor[trend]} />
+                <Text variant="label" style={{ color: trendColor[trend] }}>
+                  {trendLabel[trend]}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            )}
           </View>
 
-          {latest ? (
+          {isLoading ? (
+            <View style={[tw`items-center`, { paddingVertical: spacing.xl }]}>
+              <ActivityIndicator testID="loading-indicator" color={c.primary} />
+            </View>
+          ) : latest ? (
             <>
               <View style={[tw`items-center`, { marginVertical: spacing.md }]}>
                 <View style={tw`flex-row items-end`}>
@@ -130,16 +109,36 @@ export default function TrackingScreen() {
                       letterSpacing: -2,
                     }}
                   >
-                    {latest.weight.toFixed(1)}
+                    {latest.weight?.toFixed(1) ?? '—'}
                   </Text>
                   <Text variant="heading2" color="muted" style={{ marginBottom: 6, marginLeft: 6 }}>
                     kg
                   </Text>
                 </View>
                 <Text variant="caption" color="muted">
-                  {dayjs(latest.date).format('dddd D MMMM')}
+                  {dayjs(latest.measuredAt).format('dddd D MMMM')}
                 </Text>
               </View>
+
+              {latest.bmi || latest.bodyfat || latest.muscle ? (
+                <>
+                  <View style={[tw`h-px`, { backgroundColor: c.border }]} />
+                  <View style={[tw`flex-row justify-between`, { marginTop: spacing.md }]}>
+                    {latest.bmi ? (
+                      <StatItem label="IMC" value={`${latest.bmi}`} unit="" size="sm" />
+                    ) : null}
+                    {latest.bodyfat ? (
+                      <StatItem label="Gras" value={`${latest.bodyfat}`} unit="%" size="sm" />
+                    ) : null}
+                    {latest.muscle ? (
+                      <StatItem label="Muscles" value={`${latest.muscle}`} unit="%" size="sm" />
+                    ) : null}
+                    {latest.bmr ? (
+                      <StatItem label="BMR" value={`${latest.bmr}`} unit="kcal" size="sm" />
+                    ) : null}
+                  </View>
+                </>
+              ) : null}
 
               {(onboarding.targetWeight || kgToGoal) && (
                 <>
@@ -156,7 +155,7 @@ export default function TrackingScreen() {
                     {kgToGoal && (
                       <StatItem
                         label={
-                          latest.weight > (onboarding.targetWeight ?? 0)
+                          (latest.weight ?? 0) > (onboarding.targetWeight ?? 0)
                             ? 'Reste à perdre'
                             : 'Objectif dépassé'
                         }
@@ -187,7 +186,7 @@ export default function TrackingScreen() {
                 color="muted"
                 style={{ marginTop: spacing.sm, textAlign: 'center' }}
               >
-                Aucune pesée enregistrée.{'\n'}Appuie sur &quot;Peser&quot; pour commencer.
+                Aucune pesée synchronisée.{'\n'}La balance Renpho se sync au démarrage.
               </Text>
             </View>
           )}
@@ -203,15 +202,32 @@ export default function TrackingScreen() {
                 <View key={entry.id}>
                   {index > 0 && <View style={[tw`h-px`, { backgroundColor: c.border }]} />}
                   <View style={tw`flex-row items-center justify-between py-3`}>
-                    <View>
-                      <Text variant="body" style={{ fontWeight: '600' }}>
-                        {entry.weight.toFixed(1)} kg
-                      </Text>
+                    <View style={tw`flex-1`}>
+                      <View style={tw`flex-row items-baseline gap-2`}>
+                        <Text variant="body" style={{ fontWeight: '600' }}>
+                          {entry.weight?.toFixed(1) ?? '—'} kg
+                        </Text>
+                        {entry.bmi ? (
+                          <Text variant="caption" color="muted">
+                            IMC {entry.bmi}
+                          </Text>
+                        ) : null}
+                      </View>
                       <Text variant="caption" color="muted">
-                        {dayjs(entry.date).format('dddd D MMMM')}
+                        {dayjs(entry.measuredAt).format('dddd D MMMM')}
                       </Text>
+                      {entry.bodyfat || entry.muscle ? (
+                        <Text variant="caption" color="muted" style={{ marginTop: 1 }}>
+                          {[
+                            entry.bodyfat ? `${entry.bodyfat}% gras` : null,
+                            entry.muscle ? `${entry.muscle}% musc.` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </Text>
+                      ) : null}
                     </View>
-                    <TouchableOpacity onPress={() => handleDelete(entry.id)} hitSlop={8}>
+                    <TouchableOpacity onPress={() => deleteWeight(entry.id)} hitSlop={8}>
                       <Ionicons name="trash-outline" size={18} color={c.textMuted} />
                     </TouchableOpacity>
                   </View>
@@ -221,8 +237,6 @@ export default function TrackingScreen() {
           </View>
         )}
       </ScrollView>
-
-      <AddWeightSheet ref={addSheetRef} onSave={handleSaveWeight} />
     </SafeAreaView>
   )
 }

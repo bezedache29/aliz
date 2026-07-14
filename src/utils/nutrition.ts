@@ -48,3 +48,29 @@ export function calculateNutritionalGoals(
     estimatedWeeks,
   }
 }
+
+// Redistribue les calories brûlées (Strava) sur les 3 macros au même ratio que l'objectif de base,
+// pour que le budget kcal restant et les objectifs de macros restent cohérents entre eux.
+export function applyBurnedCalories(goals: NutritionalGoals, burnedKcal: number): NutritionalGoals {
+  if (burnedKcal <= 0) return goals
+
+  const { proteines, glucides, lipides } = goals.macros
+  const kcalFromProteines = proteines * 4
+  const kcalFromGlucides = glucides * 4
+  const kcalFromLipides = lipides * 9
+  const totalKcal = kcalFromProteines + kcalFromGlucides + kcalFromLipides
+
+  if (totalKcal <= 0) {
+    return { ...goals, dailyKcalAdjusted: goals.dailyKcalAdjusted + burnedKcal }
+  }
+
+  return {
+    ...goals,
+    dailyKcalAdjusted: goals.dailyKcalAdjusted + burnedKcal,
+    macros: {
+      proteines: Math.round(proteines + (burnedKcal * (kcalFromProteines / totalKcal)) / 4),
+      glucides: Math.round(glucides + (burnedKcal * (kcalFromGlucides / totalKcal)) / 4),
+      lipides: Math.round(lipides + (burnedKcal * (kcalFromLipides / totalKcal)) / 9),
+    },
+  }
+}

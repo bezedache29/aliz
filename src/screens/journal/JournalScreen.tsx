@@ -27,7 +27,7 @@ import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
 import { weekPlanAtom } from '@/src/store/planningAtom'
 import { spacing } from '@/src/styles/design-tokens'
-import { calculateNutritionalGoals } from '@/src/utils/nutrition'
+import { applyBurnedCalories, calculateNutritionalGoals } from '@/src/utils/nutrition'
 
 const MEAL_ORDER: MealType[] = ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Dîner']
 
@@ -78,8 +78,11 @@ export default function JournalScreen() {
   const dateLabel = dayjs().format('dddd D MMMM')
   const dateFormatted = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)
 
-  const burned = 0
-  const remaining = goals ? Math.max(0, goals.dailyKcalAdjusted - consumedKcal + burned) : 0
+  const { data: activities = [] } = useActivities()
+  const todayActivities = activities.filter((a) => dayjs(a.startedAt).isSame(dayjs(), 'day'))
+  const burned = todayActivities.reduce((sum, a) => sum + (a.calories ?? 0), 0)
+  const adjustedGoals = goals ? applyBurnedCalories(goals, burned) : null
+  const remaining = adjustedGoals ? Math.max(0, adjustedGoals.dailyKcalAdjusted - consumedKcal) : 0
 
   const { data: weightHistory = [], isLoading: weightLoading } = useWeightHistory()
   const sortedWeights = [...weightHistory]
@@ -108,9 +111,6 @@ export default function JournalScreen() {
   const weightTrendColors = { up: c.danger, stable: c.info, down: c.primary }
   const weightTrendIcon = weightTrendIcons[weightTrend]
   const weightTrendColor = weightTrendColors[weightTrend]
-
-  const { data: activities = [] } = useActivities()
-  const todayActivities = activities.filter((a) => dayjs(a.startedAt).isSame(dayjs(), 'day'))
 
   const { refreshing, refresh } = useRefresh()
 
@@ -163,7 +163,7 @@ export default function JournalScreen() {
           {dateFormatted}
         </Text>
 
-        {goals && (
+        {adjustedGoals && (
           <Card>
             <View style={tw`flex-row justify-between items-center`}>
               <Text variant="label" color="muted" uppercase>
@@ -171,13 +171,38 @@ export default function JournalScreen() {
               </Text>
             </View>
             <View style={[tw`flex-row items-center justify-between`, { marginTop: spacing.md }]}>
-              <StatItem label="Mangées" value={formatKcal(consumedKcal)} unit="kcal" size="sm" />
+              <View style={tw`items-center gap-1`}>
+                <CircleBar
+                  value={consumedKcal}
+                  max={Math.max(1, adjustedGoals.dailyKcalAdjusted)}
+                  size={64}
+                  strokeWidth={6}
+                  arcAngle={360}
+                  color={c.primary}
+                >
+                  <Ionicons name="restaurant" size={18} color={c.primary} />
+                </CircleBar>
+                <Text variant="label" style={{ fontWeight: '700' }}>
+                  {formatKcal(consumedKcal)}
+                </Text>
+                <Text variant="caption" color="muted">
+                  Mangées
+                </Text>
+              </View>
+
               <CircleBar
                 value={consumedKcal}
-                max={Math.max(1, goals.dailyKcalAdjusted)}
+                max={Math.max(1, adjustedGoals.dailyKcalAdjusted)}
                 size={150}
                 strokeWidth={12}
                 arcAngle={270}
+                color={
+                  consumedKcal >= adjustedGoals.dailyKcalAdjusted
+                    ? c.danger
+                    : consumedKcal >= adjustedGoals.dailyKcalAdjusted * 0.8
+                      ? c.warning
+                      : c.primary
+                }
               >
                 <Text variant="heading2" style={{ fontWeight: '700' }}>
                   {formatKcal(remaining)}
@@ -186,7 +211,25 @@ export default function JournalScreen() {
                   Restantes
                 </Text>
               </CircleBar>
-              <StatItem label="Brûlées" value={formatKcal(burned)} unit="kcal" size="sm" />
+
+              <View style={tw`items-center gap-1`}>
+                <CircleBar
+                  value={burned}
+                  max={Math.max(1, adjustedGoals.dailyKcalAdjusted)}
+                  size={64}
+                  strokeWidth={6}
+                  arcAngle={360}
+                  color={c.warning}
+                >
+                  <Ionicons name="flame" size={18} color={c.warning} />
+                </CircleBar>
+                <Text variant="label" style={{ fontWeight: '700' }}>
+                  {formatKcal(burned)}
+                </Text>
+                <Text variant="caption" color="muted">
+                  Brûlées
+                </Text>
+              </View>
             </View>
 
             <View style={[tw`h-px`, { marginVertical: spacing.md, backgroundColor: c.border }]} />
@@ -210,14 +253,16 @@ export default function JournalScreen() {
                       tw`h-full rounded-full`,
                       {
                         backgroundColor:
-                          consumedProteines >= goals.macros.proteines ? c.danger : c.tertiary,
-                        width: `${Math.min((consumedProteines / Math.max(1, goals.macros.proteines)) * 100, 100)}%`,
+                          consumedProteines >= adjustedGoals.macros.proteines
+                            ? c.danger
+                            : c.tertiary,
+                        width: `${Math.min((consumedProteines / Math.max(1, adjustedGoals.macros.proteines)) * 100, 100)}%`,
                       },
                     ]}
                   />
                 </View>
                 <Text variant="caption" color="muted">
-                  {consumedProteines} / {goals.macros.proteines} g
+                  {Math.round(consumedProteines)} / {adjustedGoals.macros.proteines} g
                 </Text>
               </View>
               <View style={tw`flex-1 gap-1`}>
@@ -235,14 +280,14 @@ export default function JournalScreen() {
                       tw`h-full rounded-full`,
                       {
                         backgroundColor:
-                          consumedGlucides >= goals.macros.glucides ? c.danger : c.warning,
-                        width: `${Math.min((consumedGlucides / Math.max(1, goals.macros.glucides)) * 100, 100)}%`,
+                          consumedGlucides >= adjustedGoals.macros.glucides ? c.danger : c.warning,
+                        width: `${Math.min((consumedGlucides / Math.max(1, adjustedGoals.macros.glucides)) * 100, 100)}%`,
                       },
                     ]}
                   />
                 </View>
                 <Text variant="caption" color="muted">
-                  {consumedGlucides} / {goals.macros.glucides} g
+                  {Math.round(consumedGlucides)} / {adjustedGoals.macros.glucides} g
                 </Text>
               </View>
               <View style={tw`flex-1 gap-1`}>
@@ -260,14 +305,14 @@ export default function JournalScreen() {
                       tw`h-full rounded-full`,
                       {
                         backgroundColor:
-                          consumedLipides >= goals.macros.lipides ? c.danger : c.info,
-                        width: `${Math.min((consumedLipides / Math.max(1, goals.macros.lipides)) * 100, 100)}%`,
+                          consumedLipides >= adjustedGoals.macros.lipides ? c.danger : c.info,
+                        width: `${Math.min((consumedLipides / Math.max(1, adjustedGoals.macros.lipides)) * 100, 100)}%`,
                       },
                     ]}
                   />
                 </View>
                 <Text variant="caption" color="muted">
-                  {consumedLipides} / {goals.macros.lipides} g
+                  {Math.round(consumedLipides)} / {adjustedGoals.macros.lipides} g
                 </Text>
               </View>
             </View>

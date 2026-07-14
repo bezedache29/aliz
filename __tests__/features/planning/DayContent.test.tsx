@@ -5,9 +5,16 @@ import React from 'react'
 
 import dayjs from '@/src/config/dayjs'
 import { DayContent } from '@/src/features/planning/DayContent'
+import { type StravaActivity } from '@/src/models/activity/strava-activity.model'
 import { selectedDateAtom } from '@/src/store/planningAtom'
 
 const FIXED_DATE = dayjs('2026-06-24')
+
+let mockActivities: StravaActivity[] = []
+
+jest.mock('@/src/apis/backendApi/hooks/activity/useActivities', () => ({
+  useActivities: () => ({ data: mockActivities, isLoading: false, refetch: jest.fn() }),
+}))
 
 jest.mock('@/src/apis/backendApi/hooks/planning/usePlanningWeek', () => ({
   usePlanningWeek: jest.fn().mockReturnValue({
@@ -97,7 +104,24 @@ async function renderDayContent() {
   return { result, store }
 }
 
+const makeActivity = (overrides: Partial<StravaActivity> = {}): StravaActivity => ({
+  id: 'act-1',
+  name: 'Sortie VTT',
+  type: 'MountainBikeRide',
+  startedAt: '2026-06-24T08:00:00.000Z',
+  distance: 15000.5,
+  movingTime: 3600,
+  elapsedTime: 3700,
+  totalElevationGain: 420,
+  calories: 870.2,
+  ...overrides,
+})
+
 describe('DayContent', () => {
+  beforeEach(() => {
+    mockActivities = []
+  })
+
   describe('affichage du jour sélectionné', () => {
     it('affiche le nom du jour en majuscules', async () => {
       const { result } = await renderDayContent()
@@ -131,6 +155,31 @@ describe('DayContent', () => {
       await renderDayContent()
       await act(async () => {})
       expect(usePlanningWeek).toHaveBeenCalledWith('2026-06-24')
+    })
+  })
+
+  describe('activités Strava du jour', () => {
+    it("affiche l'état vide quand il n'y a aucune activité", async () => {
+      const { result } = await renderDayContent()
+      expect(result.getByText('Activités')).toBeTruthy()
+      expect(result.getByText('Aucune activité ce jour.')).toBeTruthy()
+    })
+
+    it("affiche l'état vide pour une activité d'un autre jour", async () => {
+      mockActivities = [makeActivity({ startedAt: '2026-06-20T08:00:00.000Z' })]
+      const { result } = await renderDayContent()
+      expect(result.getByText('Aucune activité ce jour.')).toBeTruthy()
+    })
+
+    it('affiche les activités du jour sélectionné', async () => {
+      mockActivities = [makeActivity({ name: 'Sortie VTT' })]
+      const { result } = await renderDayContent()
+      expect(result.getByText('Activités')).toBeTruthy()
+      expect(result.getByText('Sortie VTT')).toBeTruthy()
+      expect(result.getByText('15.0 km')).toBeTruthy()
+      expect(result.getByText('1h00')).toBeTruthy()
+      expect(result.getByText('420 m D+')).toBeTruthy()
+      expect(result.getByText('870 kcal')).toBeTruthy()
     })
   })
 })

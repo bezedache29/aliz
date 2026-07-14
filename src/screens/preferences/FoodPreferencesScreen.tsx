@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { isAxiosError } from 'axios'
-import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { ActivityIndicator, RefreshControl, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -9,6 +8,7 @@ import tw from 'twrnc'
 import { useAddPreference } from '@/src/apis/backendApi/hooks/preference/useAddPreference'
 import { useDeletePreference } from '@/src/apis/backendApi/hooks/preference/useDeletePreference'
 import { usePreferences } from '@/src/apis/backendApi/hooks/preference/usePreferences'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
@@ -17,7 +17,6 @@ import type { FoodPreference, PreferenceType } from '@/src/models/preference/foo
 
 export default function FoodPreferencesScreen() {
   const c = useColors()
-  const router = useRouter()
   const { data: preferences, isLoading, refetch } = usePreferences()
   const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
   const [activeTab, setActiveTab] = useState<PreferenceType>('liked')
@@ -46,13 +45,7 @@ export default function FoodPreferencesScreen() {
       edges={['top', 'bottom', 'left', 'right']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      {/* En-tête */}
-      <View style={tw`flex-row items-center px-4 pt-2 pb-4 gap-2`}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={26} color={c.textPrimary} />
-        </TouchableOpacity>
-        <Text variant="heading1">Préférences</Text>
-      </View>
+      <ScreenHeader title="Préférences" />
 
       {/* Contrôle segmenté */}
       <View style={[tw`mx-4 mb-5 p-1 rounded-2xl`, { backgroundColor: c.surfaceElevated }]}>

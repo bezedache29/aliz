@@ -1,11 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { useRouter } from 'expo-router'
-import { ActivityIndicator, RefreshControl, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, RefreshControl, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
 import { Card } from '@/src/components/card'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
 import { StatItem } from '@/src/components/stat-item'
 import { Text } from '@/src/components/text'
@@ -33,7 +33,6 @@ const ACTIVITY_ICONS: Record<
 
 export default function ProfileScreen() {
   const c = useColors()
-  const router = useRouter()
   const { data: profile, isLoading, refetch } = useProfile()
   const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
 
@@ -42,12 +41,7 @@ export default function ProfileScreen() {
       edges={['top', 'bottom', 'left', 'right']}
       style={{ flex: 1, backgroundColor: c.background }}
     >
-      <View style={tw`flex-row items-center px-4 pt-2 pb-3 gap-2`}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={26} color={c.textPrimary} />
-        </TouchableOpacity>
-        <Text variant="heading1">Profil</Text>
-      </View>
+      <ScreenHeader title="Profil" />
 
       {isLoading ? (
         <View style={tw`flex-1 items-center justify-center`}>

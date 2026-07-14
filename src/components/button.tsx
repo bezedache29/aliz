@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { ActivityIndicator, Pressable, type PressableProps, type ViewStyle } from 'react-native'
 import tw from 'twrnc'
 
@@ -13,6 +14,8 @@ type ButtonProps = PressableProps & {
   label: string
   loading?: boolean
   fullWidth?: boolean
+  icon?: keyof typeof Ionicons.glyphMap
+  iconOnly?: boolean
 }
 
 const sizeStyles = {
@@ -21,12 +24,26 @@ const sizeStyles = {
   lg: tw`py-4 px-6`,
 }
 
+const iconOnlySizeStyles = {
+  sm: tw`p-1.5`,
+  md: tw`p-2.5`,
+  lg: tw`p-3.5`,
+}
+
+const iconSizes = {
+  sm: 14,
+  md: 18,
+  lg: 22,
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
   label,
   loading = false,
   fullWidth = false,
+  icon,
+  iconOnly = false,
   disabled,
   style,
   ...props
@@ -46,15 +63,17 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityLabel={label}
       disabled={isDisabled}
       style={({ pressed }) => [
-        tw`rounded-xl border flex-row items-center justify-center gap-1`,
-        sizeStyles[size],
+        tw`border flex-row items-center justify-center gap-1`,
+        iconOnly ? tw`rounded-full` : tw`rounded-xl`,
+        iconOnly ? iconOnlySizeStyles[size] : sizeStyles[size],
         {
           backgroundColor: v.bg,
           borderColor: v.border,
           opacity: pressed || isDisabled ? 0.6 : 1,
-          alignSelf: fullWidth ? 'stretch' : 'flex-start',
+          alignSelf: fullWidth ? 'stretch' : undefined,
         },
         style as ViewStyle,
       ]}
@@ -63,9 +82,14 @@ export function Button({
       {loading ? (
         <ActivityIndicator size="small" color={v.text} />
       ) : (
-        <Text variant="body" style={{ color: v.text, fontWeight: '600' }}>
-          {label}
-        </Text>
+        <>
+          {icon && <Ionicons name={icon} size={iconSizes[size]} color={v.text} />}
+          {!iconOnly && (
+            <Text variant="body" style={{ color: v.text, fontWeight: '600' }}>
+              {label}
+            </Text>
+          )}
+        </>
       )}
     </Pressable>
   )

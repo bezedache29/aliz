@@ -7,6 +7,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import * as ExpoSplash from 'expo-splash-screen'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import * as WebBrowser from 'expo-web-browser'
 import { useSetAtom } from 'jotai'
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
@@ -55,6 +56,7 @@ const queryClient = new QueryClient({
 })
 
 ExpoSplash.preventAutoHideAsync()
+WebBrowser.maybeCompleteAuthSession()
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null }

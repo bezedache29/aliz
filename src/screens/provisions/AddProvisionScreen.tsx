@@ -30,6 +30,7 @@ import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
 import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
 import { Button } from '@/src/components/button'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
 import { useColors } from '@/src/hooks/use-colors'
@@ -223,15 +224,7 @@ export default function AddProvisionScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      {/* En-tête */}
-      <View style={tw`flex-row items-center gap-3 px-4 pt-4 pb-6`}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="arrow-back" size={24} color={c.textPrimary} />
-        </TouchableOpacity>
-        <Text variant="heading3" style={{ fontWeight: '700', flex: 1 }}>
-          Ajouter une provision
-        </Text>
-      </View>
+      <ScreenHeader title="Ajouter une provision" />
 
       {/* Onglets */}
       <View style={tw`flex-row gap-2 px-4 pb-3`}>

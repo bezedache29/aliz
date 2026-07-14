@@ -31,6 +31,7 @@ import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
 import { useFoodSearch } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodSearch'
 import { Button } from '@/src/components/button'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
@@ -876,27 +877,10 @@ export default function FoodSearchScreen() {
   return (
     <SafeAreaView style={[tw`flex-1`, { backgroundColor: c.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
-        {/* Header */}
-        <View
-          style={[
-            tw`flex-row items-center gap-3 px-4 py-3`,
-            { borderBottomWidth: 1, borderBottomColor: c.border },
-          ]}
-        >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-            <Ionicons name="arrow-back" size={24} color={c.textPrimary} />
-          </TouchableOpacity>
-          <View style={tw`flex-1`}>
-            <Text variant="heading3" style={{ fontWeight: '700' }}>
-              {isRecipeMode ? 'Ajouter un ingrédient' : 'Aliment unique'}
-            </Text>
-            {!isRecipeMode && mealType && (
-              <Text variant="caption" color="secondary">
-                {mealType}
-              </Text>
-            )}
-          </View>
-        </View>
+        <ScreenHeader
+          title={isRecipeMode ? 'Ajouter un ingrédient' : 'Aliment unique'}
+          subtitle={!isRecipeMode && mealType ? mealType : undefined}
+        />
 
         {/* Barre de modes */}
         <View style={tw`flex-row gap-2 px-4 py-3`}>

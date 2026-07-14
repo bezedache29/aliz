@@ -5,7 +5,6 @@ import Svg, {
   Line,
   LinearGradient,
   Path,
-  Polygon,
   Stop,
   Text as SvgText,
 } from 'react-native-svg'
@@ -21,9 +20,28 @@ type Props = {
   targetWeight?: number | null
 }
 
-const CHART_HEIGHT = 140
-const CHART_PADDING_H = 40
-const CHART_PADDING_V = 16
+const CHART_HEIGHT = 160
+const CHART_PADDING_H = 8
+const CHART_PADDING_V = 20
+
+type Point = { x: number; y: number }
+
+function smoothPath(points: Point[]): string {
+  if (points.length < 2) return ''
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = points[i + 2] ?? p2
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+  }
+  return d
+}
 
 export function WeightChart({ entries, targetWeight }: Props) {
   const c = useColors()
@@ -58,14 +76,12 @@ export function WeightChart({ entries, targetWeight }: Props) {
   }
 
   const points = sorted.map((e, i) => ({ x: xFor(i), y: yFor(e.weight), entry: e }))
-  const polyline = points.map((p) => `${p.x},${p.y}`).join(' ')
-  const fillPolygon = [
-    `${points[0].x},${CHART_HEIGHT - CHART_PADDING_V}`,
-    ...points.map((p) => `${p.x},${p.y}`),
-    `${points[points.length - 1].x},${CHART_HEIGHT - CHART_PADDING_V}`,
-  ].join(' ')
+  const linePath = smoothPath(points)
+  const baseline = CHART_HEIGHT - CHART_PADDING_V
+  const fillPath = `${linePath} L ${points[points.length - 1].x} ${baseline} L ${points[0].x} ${baseline} Z`
 
   const targetY = targetWeight ? yFor(targetWeight) : null
+  const last = points[points.length - 1]
 
   const firstDate = dayjs(sorted[0].measuredAt).format('D MMM')
   const lastDate = dayjs(sorted[sorted.length - 1].measuredAt).format('D MMM')
@@ -75,10 +91,27 @@ export function WeightChart({ entries, targetWeight }: Props) {
       <Svg width="100%" viewBox={`0 0 ${chartWidth} ${CHART_HEIGHT}`} height={CHART_HEIGHT}>
         <Defs>
           <LinearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={c.primary} stopOpacity="0.25" />
+            <Stop offset="0" stopColor={c.primary} stopOpacity="0.3" />
             <Stop offset="1" stopColor={c.primary} stopOpacity="0" />
           </LinearGradient>
         </Defs>
+
+        <Line
+          x1={CHART_PADDING_H}
+          y1={CHART_PADDING_V}
+          x2={chartWidth - CHART_PADDING_H}
+          y2={CHART_PADDING_V}
+          stroke={c.border}
+          strokeWidth="1"
+        />
+        <Line
+          x1={CHART_PADDING_H}
+          y1={baseline}
+          x2={chartWidth - CHART_PADDING_H}
+          y2={baseline}
+          stroke={c.border}
+          strokeWidth="1"
+        />
 
         {targetY !== null && (
           <Line
@@ -92,36 +125,41 @@ export function WeightChart({ entries, targetWeight }: Props) {
           />
         )}
 
-        <Polygon points={fillPolygon} fill="url(#weightGrad)" />
+        <Path d={fillPath} fill="url(#weightGrad)" />
 
         <Path
-          d={`M ${points.map((p) => `${p.x} ${p.y}`).join(' L ')}`}
+          d={linePath}
           fill="none"
           stroke={c.primary}
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {points.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={3} fill={c.primary} />
-        ))}
+        <Circle
+          cx={last.x}
+          cy={last.y}
+          r={5}
+          fill={c.surface}
+          stroke={c.primary}
+          strokeWidth="2.5"
+        />
 
         <SvgText
-          x={CHART_PADDING_H}
-          y={CHART_PADDING_V - 4}
+          x={CHART_PADDING_H + 2}
+          y={CHART_PADDING_V - 6}
           fontSize="10"
           fill={c.textMuted}
-          textAnchor="middle"
+          textAnchor="start"
         >
           {maxW.toFixed(1)}
         </SvgText>
         <SvgText
-          x={CHART_PADDING_H}
-          y={CHART_HEIGHT - CHART_PADDING_V + 12}
+          x={CHART_PADDING_H + 2}
+          y={baseline + 12}
           fontSize="10"
           fill={c.textMuted}
-          textAnchor="middle"
+          textAnchor="start"
         >
           {minW.toFixed(1)}
         </SvgText>

@@ -1,13 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { BottomSheetModal } from '@gorhom/bottom-sheet'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { RefreshControl, View } from 'react-native'
 import tw from 'twrnc'
 
+import { useActivities } from '@/src/apis/backendApi/hooks/activity/useActivities'
 import { usePlanningWeek } from '@/src/apis/backendApi/hooks/planning/usePlanningWeek'
 import { useRegenerateMealSlot } from '@/src/apis/backendApi/hooks/planning/useRegenerateMealSlot'
+import { Card } from '@/src/components/card'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
+import { ActivityRow } from '@/src/features/tracking/ActivityRow'
 import { useColors } from '@/src/hooks/use-colors'
 import { useRefresh } from '@/src/hooks/use-refresh'
 import type { MealType } from '@/src/models/planning/planning.model'
@@ -33,6 +37,9 @@ export function DayContent() {
 
   const { data: slots = [], isLoading } = usePlanningWeek(dateKey)
   const regenerateMutation = useRegenerateMealSlot()
+
+  const { data: activities = [] } = useActivities()
+  const dayActivities = activities.filter((a) => selectedDate.isSame(a.startedAt, 'day'))
 
   function handleSlotPress(meal: MealType) {
     setActiveMeal(meal)
@@ -130,6 +137,28 @@ export function DayContent() {
               />
             )
           })}
+        </View>
+
+        <View style={tw`mt-2 gap-2`}>
+          <Text variant="label" color="muted" uppercase style={{ letterSpacing: 0.8 }}>
+            Activités
+          </Text>
+          {dayActivities.length > 0 ? (
+            <View style={tw`gap-2`}>
+              {dayActivities.map((activity) => (
+                <ActivityRow key={activity.id} activity={activity} showDate={false} />
+              ))}
+            </View>
+          ) : (
+            <Card>
+              <View style={tw`items-center gap-1`}>
+                <Ionicons name="bicycle-outline" size={28} color={c.textMuted} />
+                <Text variant="body" color="muted">
+                  Aucune activité ce jour.
+                </Text>
+              </View>
+            </Card>
+          )}
         </View>
       </ScrollView>
 

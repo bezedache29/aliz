@@ -1,23 +1,33 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useAtomValue } from 'jotai'
-import { ActivityIndicator, RefreshControl, TouchableOpacity, View } from 'react-native'
+import { useState } from 'react'
+import { ActivityIndicator, RefreshControl, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useActivities } from '@/src/apis/backendApi/hooks/activity/useActivities'
+import { useStravaStatus } from '@/src/apis/backendApi/hooks/strava/useStravaStatus'
 import { useDeleteWeight } from '@/src/apis/backendApi/hooks/weight/useDeleteWeight'
 import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import { AvatarButton } from '@/src/components/avatar-button'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Card } from '@/src/components/card'
+import { ShowMoreControls } from '@/src/components/show-more-button'
 import { StatItem } from '@/src/components/stat-item'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
+import { ActivityRow } from '@/src/features/tracking/ActivityRow'
+import { StravaConnectButton } from '@/src/features/tracking/StravaConnectButton'
 import { WeightChart } from '@/src/features/tracking/WeightChart'
+import { WeightEntryRow } from '@/src/features/tracking/WeightEntryRow'
 import { useColors } from '@/src/hooks/use-colors'
 import { useRefresh } from '@/src/hooks/use-refresh'
 import { type WeightEntry } from '@/src/models/weight/weight.model'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
 import { spacing } from '@/src/styles/design-tokens'
+
+const PREVIEW_COUNT = 3
+const LOAD_MORE_COUNT = 5
 
 function weightTrend(entries: WeightEntry[]): 'up' | 'stable' | 'down' {
   const withWeight = entries.filter(
@@ -37,8 +47,22 @@ export default function TrackingScreen() {
   const c = useColors()
   const onboarding = useAtomValue(onboardingAtom)
   const { data: history = [], isLoading, refetch } = useWeightHistory()
-  const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
   const { mutate: deleteWeight } = useDeleteWeight()
+  const {
+    data: stravaStatus,
+    isLoading: isStravaStatusLoading,
+    refetch: refetchStravaStatus,
+  } = useStravaStatus()
+  const {
+    data: activities = [],
+    isLoading: isActivitiesLoading,
+    refetch: refetchActivities,
+  } = useActivities()
+  const { refreshing, refresh } = useRefresh(() =>
+    Promise.all([refetch(), refetchStravaStatus(), refetchActivities()]).then(() => {}),
+  )
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(PREVIEW_COUNT)
+  const [activitiesVisibleCount, setActivitiesVisibleCount] = useState(PREVIEW_COUNT)
 
   const sorted = [...history]
     .filter((e) => !!e.measuredAt)
@@ -68,7 +92,7 @@ export default function TrackingScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={tw`p-4 gap-4`}
+        contentContainerStyle={tw`p-4 gap-8`}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -199,49 +223,98 @@ export default function TrackingScreen() {
         </Card>
 
         {sorted.length > 0 && (
-          <View style={tw`gap-2`}>
-            <Text variant="label" color="muted" uppercase style={{ letterSpacing: 0.8 }}>
-              Historique
-            </Text>
-            <Card noPadding style={tw`px-4`}>
-              {sorted.slice(0, 10).map((entry, index) => (
-                <View key={entry.id}>
-                  {index > 0 && <View style={[tw`h-px`, { backgroundColor: c.border }]} />}
-                  <View style={tw`flex-row items-center justify-between py-3`}>
-                    <View style={tw`flex-1`}>
-                      <View style={tw`flex-row items-baseline gap-2`}>
-                        <Text variant="body" style={{ fontWeight: '600' }}>
-                          {entry.weight?.toFixed(1) ?? '—'} kg
-                        </Text>
-                        {entry.bmi ? (
-                          <Text variant="caption" color="muted">
-                            IMC {entry.bmi}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <Text variant="caption" color="muted">
-                        {dayjs(entry.measuredAt).format('dddd D MMMM')}
-                      </Text>
-                      {entry.bodyfat || entry.muscle ? (
-                        <Text variant="caption" color="muted" style={{ marginTop: 1 }}>
-                          {[
-                            entry.bodyfat ? `${entry.bodyfat}% gras` : null,
-                            entry.muscle ? `${entry.muscle}% musc.` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <TouchableOpacity onPress={() => deleteWeight(entry.id)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={18} color={c.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+          <View style={tw`gap-3`}>
+            <View style={tw`flex-row items-center gap-2.5`}>
+              <View
+                style={[
+                  tw`items-center justify-center rounded-full`,
+                  { width: 34, height: 34, backgroundColor: `${c.info}1F` },
+                ]}
+              >
+                <Ionicons name="scale-outline" size={18} color={c.info} />
+              </View>
+              <Text variant="heading2">Historique du poids</Text>
+            </View>
+            <View style={[tw`h-px`, { backgroundColor: c.border }]} />
+            <View style={tw`gap-2`}>
+              {sorted.slice(0, historyVisibleCount).map((entry, index) => (
+                <WeightEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  previousWeight={sorted[index + 1]?.weight ?? null}
+                  onDelete={deleteWeight}
+                />
               ))}
-            </Card>
+            </View>
+            <ShowMoreControls
+              visibleCount={historyVisibleCount}
+              total={sorted.length}
+              previewCount={PREVIEW_COUNT}
+              step={LOAD_MORE_COUNT}
+              onChange={setHistoryVisibleCount}
+            />
           </View>
         )}
+
+        <View style={tw`gap-3`}>
+          <View style={tw`flex-row items-center gap-2.5`}>
+            <View
+              style={[
+                tw`items-center justify-center rounded-full`,
+                { width: 34, height: 34, backgroundColor: `${c.tertiary}1F` },
+              ]}
+            >
+              <Ionicons name="bicycle-outline" size={18} color={c.tertiary} />
+            </View>
+            <Text variant="heading2">Activités sportives</Text>
+          </View>
+          <View style={[tw`h-px`, { backgroundColor: c.border }]} />
+          {isStravaStatusLoading || isActivitiesLoading ? (
+            <Card>
+              <View style={[tw`items-center`, { paddingVertical: spacing.xl }]}>
+                <ActivityIndicator color={c.primary} />
+              </View>
+            </Card>
+          ) : !stravaStatus?.connected ? (
+            <Card>
+              <View style={[tw`items-center gap-3`, { paddingVertical: spacing.md }]}>
+                <Ionicons name="bicycle-outline" size={40} color={c.textMuted} />
+                <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
+                  Connecte ton compte Strava pour récupérer tes activités.
+                </Text>
+                <StravaConnectButton />
+              </View>
+            </Card>
+          ) : activities.length === 0 ? (
+            <Card>
+              <View style={[tw`items-center`, { paddingVertical: spacing.xl }]}>
+                <Ionicons name="bicycle-outline" size={40} color={c.textMuted} />
+                <Text
+                  variant="body"
+                  color="muted"
+                  style={{ marginTop: spacing.sm, textAlign: 'center' }}
+                >
+                  Aucune activité synchronisée pour l&apos;instant.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            <>
+              <View style={tw`gap-2`}>
+                {activities.slice(0, activitiesVisibleCount).map((activity) => (
+                  <ActivityRow key={activity.id} activity={activity} />
+                ))}
+              </View>
+              <ShowMoreControls
+                visibleCount={activitiesVisibleCount}
+                total={activities.length}
+                previewCount={PREVIEW_COUNT}
+                step={LOAD_MORE_COUNT}
+                onChange={setActivitiesVisibleCount}
+              />
+            </>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )

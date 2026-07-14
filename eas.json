@@ -14,9 +14,11 @@
     },
     "preview": {
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
-        "APP_ENV": "staging",
-        "API_URL": "https://staging.ton-api.com"
+        "APP_ENV": "staging"
       }
     },
     "production": {

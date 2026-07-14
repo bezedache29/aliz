@@ -10,6 +10,7 @@ import { ScrollView } from '@/src/components/scroll-view'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useActivities } from '@/src/apis/backendApi/hooks/activity/useActivities'
 import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import { AvatarButton } from '@/src/components/avatar-button'
 import { Card } from '@/src/components/card'
@@ -17,6 +18,7 @@ import { CircleBar } from '@/src/components/circle-bar'
 import { StatItem } from '@/src/components/stat-item'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
+import { ActivityRow } from '@/src/features/tracking/ActivityRow'
 import { MealAddPickerSheet } from '@/src/features/planning/MealAddPickerSheet'
 import { MealSlot } from '@/src/features/planning/MealSlot'
 import { useColors } from '@/src/hooks/use-colors'
@@ -106,6 +108,9 @@ export default function JournalScreen() {
   const weightTrendColors = { up: c.danger, stable: c.info, down: c.primary }
   const weightTrendIcon = weightTrendIcons[weightTrend]
   const weightTrendColor = weightTrendColors[weightTrend]
+
+  const { data: activities = [] } = useActivities()
+  const todayActivities = activities.filter((a) => dayjs(a.startedAt).isSame(dayjs(), 'day'))
 
   const { refreshing, refresh } = useRefresh()
 
@@ -395,6 +400,33 @@ export default function JournalScreen() {
             </Card>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(drawer)/(tabs)/tracking')}
+        >
+          <View style={tw`gap-2`}>
+            <Text variant="label" color="muted" uppercase style={{ letterSpacing: 0.8 }}>
+              Activités du jour
+            </Text>
+            {todayActivities.length > 0 ? (
+              <View style={tw`gap-2`}>
+                {todayActivities.map((activity) => (
+                  <ActivityRow key={activity.id} activity={activity} showDate={false} />
+                ))}
+              </View>
+            ) : (
+              <Card>
+                <View style={tw`items-center gap-1`}>
+                  <Ionicons name="bicycle-outline" size={28} color={c.textMuted} />
+                  <Text variant="body" color="muted">
+                    Aucune activité aujourd&apos;hui.
+                  </Text>
+                </View>
+              </Card>
+            )}
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       <MealAddPickerSheet

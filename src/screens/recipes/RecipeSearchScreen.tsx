@@ -16,6 +16,7 @@ import tw from 'twrnc'
 import { useRecipes } from '@/src/apis/backendApi/hooks/recipes/useRecipes'
 import { useUpdateRecipe } from '@/src/apis/backendApi/hooks/recipes/useUpdateRecipe'
 import { Badge } from '@/src/components/badge'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
 import { Text } from '@/src/components/text'
 import dayjs from '@/src/config/dayjs'
@@ -181,27 +182,7 @@ export default function RecipeSearchScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          tw`flex-row items-center gap-3 px-4 py-3`,
-          { borderBottomWidth: 1, borderBottomColor: c.border },
-        ]}
-      >
-        <TouchableOpacity hitSlop={8} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={c.textPrimary} />
-        </TouchableOpacity>
-        <View style={tw`flex-1`}>
-          <Text variant="heading3" style={{ fontWeight: '700' }}>
-            Choisir une recette
-          </Text>
-          {mealType && (
-            <Text variant="caption" color="secondary">
-              {mealType}
-            </Text>
-          )}
-        </View>
-      </View>
+      <ScreenHeader title="Choisir une recette" subtitle={mealType ?? undefined} />
 
       {/* Onglets */}
       <View style={tw`flex-row gap-2 px-4 py-3`}>

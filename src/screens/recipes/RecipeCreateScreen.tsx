@@ -19,6 +19,7 @@ import { z } from 'zod'
 import { useCreateRecipe } from '@/src/apis/backendApi/hooks/recipes/useCreateRecipe'
 import { Button } from '@/src/components/button'
 import { Input } from '@/src/components/input'
+import { ScreenHeader } from '@/src/components/screen-header'
 import { Text } from '@/src/components/text'
 import { COOKING_METHOD_ICONS, SEASON_ICONS } from '@/src/features/recipes/RecipeCard'
 import { useColors } from '@/src/hooks/use-colors'
@@ -178,20 +179,7 @@ export default function RecipeCreateScreen() {
   return (
     <SafeAreaView edges={['top', 'bottom']} style={[tw`flex-1`, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView style={tw`flex-1`} behavior="padding">
-        {/* Header */}
-        <View
-          style={[
-            tw`flex-row items-center gap-3 px-4 py-3`,
-            { borderBottomWidth: 1, borderBottomColor: c.border },
-          ]}
-        >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-            <Ionicons name="arrow-back" size={24} color={c.textPrimary} />
-          </TouchableOpacity>
-          <Text variant="heading3" style={{ fontWeight: '700' }}>
-            Nouvelle recette
-          </Text>
-        </View>
+        <ScreenHeader title="Nouvelle recette" />
 
         <ScrollView
           contentContainerStyle={tw`p-4 gap-5 pb-10`}

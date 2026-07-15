@@ -5,6 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { useCreateProfile } from '@/src/apis/backendApi/hooks/profile/useCreateProfile'
+import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
+import { useUpdateProfile } from '@/src/apis/backendApi/hooks/profile/useUpdateProfile'
+import { onboardingDataToUpdateDTO } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { Button } from '@/src/components/button'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
 import { ScrollView } from '@/src/components/scroll-view'
@@ -38,7 +41,9 @@ export default function OnboardingSummaryScreen() {
   const c = useColors()
   const router = useRouter()
   const [onboarding, setOnboarding] = useAtom(onboardingAtom)
+  const { data: existingProfile } = useProfile()
   const { mutate: createProfile } = useCreateProfile()
+  const { mutate: updateProfile } = useUpdateProfile()
 
   const goals =
     onboarding.currentWeight &&
@@ -61,7 +66,11 @@ export default function OnboardingSummaryScreen() {
 
   function onStart() {
     setOnboarding((prev) => ({ ...prev, completed: true }))
-    createProfile(onboarding)
+    if (existingProfile) {
+      updateProfile(onboardingDataToUpdateDTO(onboarding))
+    } else {
+      createProfile(onboarding)
+    }
     router.replace('/')
   }
 

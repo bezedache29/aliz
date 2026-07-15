@@ -1,9 +1,13 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useAtomValue } from 'jotai'
-import { View } from 'react-native'
+import * as WebBrowser from 'expo-web-browser'
+import { useAtom } from 'jotai'
+import { useState } from 'react'
+import { ToastAndroid, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useActivitySync } from '@/src/apis/backendApi/hooks/activity/useActivitySync'
 import { Button } from '@/src/components/button'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
 import { Text } from '@/src/components/text'
@@ -11,6 +15,8 @@ import { useColors } from '@/src/hooks/use-colors'
 import { ACTIVITY_COEFFICIENTS } from '@/src/models/user/user.model'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
 import { calculateBMR } from '@/src/utils/nutrition'
+
+const STRAVA_REDIRECT_URL = 'aliz://strava-callback'
 
 const INCREMENTS = [
   { range: '0 – 300 kcal brûlées', bonus: 0, note: 'objectif de base' },
@@ -23,7 +29,33 @@ const INCREMENTS = [
 export default function OnboardingStravaScreen() {
   const c = useColors()
   const router = useRouter()
-  const onboarding = useAtomValue(onboardingAtom)
+  const [onboarding, setOnboarding] = useAtom(onboardingAtom)
+  const [connecting, setConnecting] = useState(false)
+  const queryClient = useQueryClient()
+  const { mutate: syncActivities } = useActivitySync()
+
+  async function connectStrava() {
+    setConnecting(true)
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(
+        `${process.env.EXPO_PUBLIC_API_URL}/strava/authorize`,
+        STRAVA_REDIRECT_URL,
+      )
+
+      if (result.type === 'success' && result.url.includes('connected=1')) {
+        setOnboarding((prev) => ({ ...prev, stravaConnected: true }))
+        queryClient.invalidateQueries({ queryKey: ['strava-status'] })
+        syncActivities()
+        router.push('/onboarding/summary')
+      } else if (result.type === 'success') {
+        ToastAndroid.show('Connexion Strava annulée', ToastAndroid.SHORT)
+      }
+    } catch {
+      ToastAndroid.show('Impossible de contacter Strava', ToastAndroid.SHORT)
+    } finally {
+      setConnecting(false)
+    }
+  }
 
   const deficit = onboarding.weeklyLossKg === 1 ? 1000 : 500
 
@@ -108,10 +140,14 @@ export default function OnboardingStravaScreen() {
 
         <View style={tw`gap-2`}>
           <Button label="Retour" variant="secondary" fullWidth size="lg" onPress={router.back} />
-          <Button label="Connecter Strava" fullWidth size="lg" disabled onPress={() => {}} />
-          <Text variant="caption" color="muted" style={tw`text-center`}>
-            Disponible prochainement — connexion OAuth2 via le serveur
-          </Text>
+          <Button
+            label={onboarding.stravaConnected ? 'Strava connecté ✓' : 'Connecter Strava'}
+            fullWidth
+            size="lg"
+            loading={connecting}
+            disabled={onboarding.stravaConnected}
+            onPress={connectStrava}
+          />
           <Button
             label="Passer cette étape"
             variant="ghost"

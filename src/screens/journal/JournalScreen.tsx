@@ -28,6 +28,7 @@ import { onboardingAtom } from '@/src/store/onboardingAtom'
 import { weekPlanAtom } from '@/src/store/planningAtom'
 import { spacing } from '@/src/styles/design-tokens'
 import { applyBurnedCalories, calculateNutritionalGoals } from '@/src/utils/nutrition'
+import { getLatestWeightEntry } from '@/src/utils/weight'
 
 const MEAL_ORDER: MealType[] = ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Dîner']
 
@@ -56,8 +57,12 @@ export default function JournalScreen() {
   const consumedGlucides = todayMeals.reduce((sum, m) => sum + m.glucides, 0)
   const consumedLipides = todayMeals.reduce((sum, m) => sum + m.lipides, 0)
 
+  const { data: weightHistory = [], isLoading: weightLoading } = useWeightHistory()
+  const latestWeight = getLatestWeightEntry(weightHistory)
+  const currentWeight = latestWeight?.weight ?? onboarding.currentWeight
+
   const goals =
-    onboarding.currentWeight &&
+    currentWeight &&
     onboarding.height &&
     onboarding.age &&
     onboarding.sex &&
@@ -65,7 +70,7 @@ export default function JournalScreen() {
     onboarding.targetWeight &&
     onboarding.weeklyLossKg
       ? calculateNutritionalGoals(
-          onboarding.currentWeight,
+          currentWeight,
           onboarding.height,
           onboarding.age,
           onboarding.sex,
@@ -83,12 +88,6 @@ export default function JournalScreen() {
   const burned = todayActivities.reduce((sum, a) => sum + (a.calories ?? 0), 0)
   const adjustedGoals = goals ? applyBurnedCalories(goals, burned) : null
   const remaining = adjustedGoals ? Math.max(0, adjustedGoals.dailyKcalAdjusted - consumedKcal) : 0
-
-  const { data: weightHistory = [], isLoading: weightLoading } = useWeightHistory()
-  const sortedWeights = [...weightHistory]
-    .filter((e) => !!e.measuredAt)
-    .sort((a, b) => (b.measuredAt < a.measuredAt ? -1 : b.measuredAt > a.measuredAt ? 1 : 0))
-  const latestWeight = sortedWeights[0] ?? null
 
   function computeWeightTrend(): 'up' | 'stable' | 'down' {
     const withWeight = weightHistory.filter((e) => e.weight !== null && !!e.measuredAt)

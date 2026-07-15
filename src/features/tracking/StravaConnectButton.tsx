@@ -27,6 +27,8 @@ export function StravaConnectButton({ fullWidth }: { fullWidth?: boolean }) {
       } else if (result.type === 'success') {
         ToastAndroid.show('Connexion Strava annulée', ToastAndroid.SHORT)
       }
+    } catch {
+      ToastAndroid.show('Impossible de contacter Strava', ToastAndroid.SHORT)
     } finally {
       setConnecting(false)
     }

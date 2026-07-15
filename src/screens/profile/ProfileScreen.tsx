@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
-import { ActivityIndicator, RefreshControl, View } from 'react-native'
+import { useRouter } from 'expo-router'
+import { ActivityIndicator, RefreshControl, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
+import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import { Card } from '@/src/components/card'
 import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
@@ -19,6 +21,7 @@ import {
   type Profile,
 } from '@/src/models/profile/profile.model'
 import type { ColorTokens } from '@/src/styles/design-tokens'
+import { getLatestWeightEntry } from '@/src/utils/weight'
 
 const ACTIVITY_ICONS: Record<
   Profile['activityLevel'],
@@ -34,7 +37,11 @@ const ACTIVITY_ICONS: Record<
 export default function ProfileScreen() {
   const c = useColors()
   const { data: profile, isLoading, refetch } = useProfile()
+  const { data: weightHistory = [] } = useWeightHistory()
   const { refreshing, refresh } = useRefresh(() => refetch().then(() => {}))
+
+  const currentWeightKg =
+    getLatestWeightEntry(weightHistory)?.weight ?? profile?.currentWeightKg ?? 0
 
   return (
     <SafeAreaView
@@ -57,8 +64,8 @@ export default function ProfileScreen() {
           }
         >
           <Avatar profile={profile} c={c} />
-          <MesuresSection profile={profile} c={c} />
-          <ObjectifSection profile={profile} c={c} />
+          <MesuresSection profile={profile} currentWeightKg={currentWeightKg} c={c} />
+          <ObjectifSection profile={profile} currentWeightKg={currentWeightKg} c={c} />
           <ActiviteSection profile={profile} c={c} />
         </ScrollView>
       )}
@@ -91,8 +98,16 @@ function Avatar({ profile, c }: { profile: Profile; c: ColorTokens }) {
   )
 }
 
-function MesuresSection({ profile, c }: { profile: Profile; c: ColorTokens }) {
-  const bmi = computeBmi(profile.currentWeightKg, profile.heightCm)
+function MesuresSection({
+  profile,
+  currentWeightKg,
+  c,
+}: {
+  profile: Profile
+  currentWeightKg: number
+  c: ColorTokens
+}) {
+  const bmi = computeBmi(currentWeightKg, profile.heightCm)
   const cat = getBmiCategory(bmi)
   const bmiColor = {
     underweight: c.info,
@@ -117,7 +132,7 @@ function MesuresSection({ profile, c }: { profile: Profile; c: ColorTokens }) {
           <View style={[tw`w-px mx-2`, { backgroundColor: c.border }]} />
           <StatItem
             label="Poids"
-            value={profile.currentWeightKg}
+            value={currentWeightKg}
             unit="kg"
             size="sm"
             align="center"
@@ -141,13 +156,27 @@ function MesuresSection({ profile, c }: { profile: Profile; c: ColorTokens }) {
   )
 }
 
-function ObjectifSection({ profile, c }: { profile: Profile; c: ColorTokens }) {
-  const remaining = +(profile.currentWeightKg - profile.targetWeightKg).toFixed(1)
+function ObjectifSection({
+  profile,
+  currentWeightKg,
+  c,
+}: {
+  profile: Profile
+  currentWeightKg: number
+  c: ColorTokens
+}) {
+  const router = useRouter()
+  const remaining = +(currentWeightKg - profile.targetWeightKg).toFixed(1)
   const isGoalReached = remaining <= 0
 
   return (
     <View style={tw`gap-3`}>
-      <SectionLabel label="Objectif poids" />
+      <View style={tw`flex-row items-center justify-between`}>
+        <SectionLabel label="Objectif poids" />
+        <TouchableOpacity onPress={() => router.push('/goal-edit')} hitSlop={12}>
+          <Ionicons name="create-outline" size={18} color={c.textMuted} />
+        </TouchableOpacity>
+      </View>
       <Card>
         <View style={tw`gap-4`}>
           <InfoRow label="Poids cible" value={`${profile.targetWeightKg} kg`} />

@@ -1,18 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'expo-router'
 import { useAtom } from 'jotai'
+import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { KeyboardAvoidingView, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
 
+import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import { Button } from '@/src/components/button'
 import { Input } from '@/src/components/input'
 import { OnboardingProgress } from '@/src/components/onboarding-progress'
 import { Text } from '@/src/components/text'
 import { useColors } from '@/src/hooks/use-colors'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
+import { getLatestWeightEntry } from '@/src/utils/weight'
 
 const schema = z.object({
   currentWeight: z
@@ -27,10 +30,14 @@ export default function OnboardingWeightScreen() {
   const c = useColors()
   const router = useRouter()
   const [onboarding, setOnboarding] = useAtom(onboardingAtom)
+  const { data: weightHistory = [] } = useWeightHistory()
+
+  const latestSyncedWeight = getLatestWeightEntry(weightHistory)?.weight ?? null
 
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -38,6 +45,11 @@ export default function OnboardingWeightScreen() {
       currentWeight: onboarding.currentWeight?.toString() ?? '',
     },
   })
+
+  useEffect(() => {
+    if (onboarding.currentWeight != null || latestSyncedWeight == null) return
+    reset({ currentWeight: latestSyncedWeight.toString() })
+  }, [latestSyncedWeight, onboarding.currentWeight, reset])
 
   function onSubmit(values: FormValues) {
     setOnboarding((prev) => ({ ...prev, currentWeight: Number(values.currentWeight) }))
@@ -53,8 +65,9 @@ export default function OnboardingWeightScreen() {
           <View style={tw`gap-2`}>
             <Text variant="heading1">Ton poids actuel</Text>
             <Text variant="body" color="secondary">
-              Entre ton poids du matin, à jeun. Plus tard, Aliz récupérera tes pesées Renpho
-              automatiquement.
+              {latestSyncedWeight != null
+                ? 'Récupéré depuis ta dernière pesée Renpho — modifie-le si besoin.'
+                : 'Entre ton poids du matin, à jeun. Aliz récupérera ensuite tes pesées Renpho automatiquement.'}
             </Text>
           </View>
 

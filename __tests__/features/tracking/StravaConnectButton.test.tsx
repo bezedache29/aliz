@@ -2,6 +2,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as WebBrowser from 'expo-web-browser'
 import React from 'react'
+import { ToastAndroid } from 'react-native'
 
 import { StravaConnectButton } from '@/src/features/tracking/StravaConnectButton'
 
@@ -93,5 +94,16 @@ describe('StravaConnectButton', () => {
       fireEvent.press(getByLabelText('Connecter Strava'))
     })
     expect(mockedMutate).not.toHaveBeenCalled()
+  })
+
+  it("affiche un toast d'erreur si l'ouverture de la session Strava échoue", async () => {
+    const toastSpy = jest.spyOn(ToastAndroid, 'show').mockImplementation(() => {})
+    mockedOpenAuthSessionAsync.mockRejectedValueOnce(new Error('network error'))
+    const { getByLabelText } = await renderButton()
+    await act(async () => {
+      fireEvent.press(getByLabelText('Connecter Strava'))
+    })
+    expect(toastSpy).toHaveBeenCalledWith('Impossible de contacter Strava', ToastAndroid.SHORT)
+    toastSpy.mockRestore()
   })
 })

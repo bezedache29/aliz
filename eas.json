@@ -9,7 +9,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "development",
-        "API_URL": "http://localhost:8000"
+        "EXPO_PUBLIC_API_URL": "http://localhost:8000"
       }
     },
     "preview": {
@@ -28,7 +28,7 @@
       },
       "env": {
         "APP_ENV": "production",
-        "API_URL": "https://aliz-api.bezedache.com"
+        "EXPO_PUBLIC_API_URL": "https://aliz-api.bezedache.com"
       }
     }
   },

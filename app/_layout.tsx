@@ -49,7 +49,7 @@ function ProfileSync() {
     if (!profile) return
     setOnboarding((prev) => {
       if (prev.completed) return prev
-      return { ...prev, ...profileToOnboardingData(profile), completed: true }
+      return { ...prev, ...profileToOnboardingData(profile) }
     })
   }, [profile, setOnboarding])
 
@@ -175,6 +175,7 @@ export default function RootLayout() {
                 <Stack.Screen name="recipe-edit" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-generate" options={{ headerShown: false }} />
                 <Stack.Screen name="provision-add" options={{ headerShown: false }} />
+                <Stack.Screen name="goal-edit" options={{ headerShown: false }} />
               </Stack>
               <StatusBar style="auto" />
             </BottomSheetModalProvider>

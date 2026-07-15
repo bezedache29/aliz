@@ -2,6 +2,7 @@ import { render } from '@testing-library/react-native'
 import React from 'react'
 
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
+import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
 import type { Profile } from '@/src/models/profile/profile.model'
 
 import ProfileScreen from '@/src/screens/profile/ProfileScreen'
@@ -9,8 +10,11 @@ import ProfileScreen from '@/src/screens/profile/ProfileScreen'
 jest.mock('@/src/apis/backendApi/hooks/profile/useProfile')
 const mockedUseProfile = useProfile as jest.Mock
 
+jest.mock('@/src/apis/backendApi/hooks/weight/useWeightHistory')
+const mockedUseWeightHistory = useWeightHistory as jest.Mock
+
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ back: jest.fn() }),
+  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
 }))
 
 jest.mock('@/src/hooks/use-colors', () => ({
@@ -34,6 +38,10 @@ const mockProfile: Profile = {
 }
 
 describe('ProfileScreen', () => {
+  beforeEach(() => {
+    mockedUseWeightHistory.mockReturnValue({ data: [], isLoading: false, refetch: jest.fn() })
+  })
+
   afterEach(() => jest.clearAllMocks())
 
   it("n'affiche pas le contenu ni l'état vide pendant le chargement", async () => {
@@ -83,5 +91,53 @@ describe('ProfileScreen', () => {
     const { getByText } = await render(<ProfileScreen />)
     // 85.5 - 75 = 10.5 kg restants
     expect(getByText('10.5 kg')).toBeTruthy()
+  })
+
+  it('affiche le poids de la dernière pesée plutôt que celui du profil', async () => {
+    mockedUseProfile.mockReturnValue({ data: mockProfile, isLoading: false, refetch: jest.fn() })
+    mockedUseWeightHistory.mockReturnValue({
+      data: [
+        {
+          id: 'w-1',
+          measuredAt: '2026-07-10T08:00:00.000Z',
+          weight: 83,
+          bmi: null,
+          bodyfat: null,
+          water: null,
+          muscle: null,
+          bone: null,
+          bmr: null,
+          protein: null,
+          bodyAge: null,
+          heartRate: null,
+        },
+        {
+          id: 'w-2',
+          measuredAt: '2026-07-14T08:00:00.000Z',
+          weight: 82,
+          bmi: null,
+          bodyfat: null,
+          water: null,
+          muscle: null,
+          bone: null,
+          bmr: null,
+          protein: null,
+          bodyAge: null,
+          heartRate: null,
+        },
+      ],
+      isLoading: false,
+      refetch: jest.fn(),
+    })
+    const { getByText, queryByText } = await render(<ProfileScreen />)
+    // Dernière pesée (14/07) = 82 kg, pas les 85.5 kg statiques du profil
+    expect(getByText('82')).toBeTruthy()
+    expect(queryByText('85.5')).toBeNull()
+  })
+
+  it('utilise le poids du profil quand aucune pesée n’a été synchronisée', async () => {
+    mockedUseProfile.mockReturnValue({ data: mockProfile, isLoading: false, refetch: jest.fn() })
+    const { getByText } = await render(<ProfileScreen />)
+    expect(getByText('85.5')).toBeTruthy()
   })
 })

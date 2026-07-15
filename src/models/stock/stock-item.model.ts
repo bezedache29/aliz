@@ -57,3 +57,8 @@ export function getExpiryStatus(item: StockItem): ExpiryStatus | null {
   if (days <= 7) return 'warning'
   return 'ok'
 }
+
+export function isExpiringSoon(item: StockItem, maxDays: number): boolean {
+  const days = getDaysUntilExpiry(item)
+  return days !== null && days <= maxDays
+}

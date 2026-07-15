@@ -48,7 +48,7 @@ export default function FoodPreferencesScreen() {
       <ScreenHeader title="Préférences" />
 
       {/* Contrôle segmenté */}
-      <View style={[tw`mx-4 mb-5 p-1 rounded-2xl`, { backgroundColor: c.surfaceElevated }]}>
+      <View style={[tw`mx-4 my-5 p-1 rounded-2xl`, { backgroundColor: c.surfaceElevated }]}>
         <View style={tw`flex-row`}>
           {tabs.map((tab) => {
             const isActive = tab.key === activeTab

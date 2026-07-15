@@ -1,8 +1,7 @@
 import { atomWithStorage } from 'jotai/utils'
 import type { SyncStorage } from 'jotai/vanilla/utils/atomWithStorage'
-import { createMMKV } from 'react-native-mmkv'
 
-const storage = createMMKV()
+import { mmkv as storage } from './mmkv'
 
 function safeClone(value: unknown, seen = new WeakSet(), depth = 0): unknown {
   if (depth > 10) return undefined

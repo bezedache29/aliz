@@ -1,4 +1,4 @@
-import '@/src/config/dayjs'
+import dayjs from '@/src/config/dayjs'
 import '@/src/config/reactotron'
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
@@ -8,7 +8,7 @@ import * as ExpoSplash from 'expo-splash-screen'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as WebBrowser from 'expo-web-browser'
-import { useSetAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -19,7 +19,17 @@ import { useWeightSync } from '@/src/apis/backendApi/hooks/weight/useWeightSync'
 import { profileToOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { CustomSplash } from '@/src/components/custom-splash'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
+import { useExpiringSoonCount } from '@/src/hooks/use-expiring-soon-count'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
+import { notificationPermissionGrantedAtom } from '@/src/store/notificationPermissionAtom'
+import { notificationsAtom } from '@/src/store/notificationsAtom'
+import {
+  cancelDailyAppReminder,
+  ensureNotificationChannelAsync,
+  presentExpiringStockNotification,
+  requestNotificationPermissionsAsync,
+  scheduleDailyAppReminder,
+} from '@/src/utils/notifications'
 
 function WeightSync() {
   const { mutate: sync } = useWeightSync()
@@ -42,6 +52,52 @@ function ProfileSync() {
       return { ...prev, ...profileToOnboardingData(profile), completed: true }
     })
   }, [profile, setOnboarding])
+
+  return null
+}
+
+function NotificationsSync() {
+  const [notifState, setNotifState] = useAtom(notificationsAtom)
+  const [permissionGranted, setPermissionGranted] = useAtom(notificationPermissionGrantedAtom)
+  const expiringSoonCount = useExpiringSoonCount()
+  const { enabled, appReminderEnabled, expiringStockEnabled } = notifState
+
+  useEffect(() => {
+    setNotifState((prev) => ({ ...prev, lastOpenDate: dayjs().format('YYYY-MM-DD') }))
+  }, [setNotifState])
+
+  useEffect(() => {
+    async function setup() {
+      // Vérifiée à chaque lancement, que les rappels soient actifs ou non, pour que
+      // l'écran Paramètres reflète toujours l'état réel de la permission système.
+      const granted = await requestNotificationPermissionsAsync()
+      setPermissionGranted(granted)
+
+      if (!enabled || !appReminderEnabled || !granted) {
+        await cancelDailyAppReminder()
+        return
+      }
+      await ensureNotificationChannelAsync()
+      await scheduleDailyAppReminder()
+    }
+    setup()
+  }, [enabled, appReminderEnabled, setPermissionGranted])
+
+  useEffect(() => {
+    if (!enabled || !expiringStockEnabled || !permissionGranted) return
+    const today = dayjs().format('YYYY-MM-DD')
+    if (expiringSoonCount > 0 && notifState.lastExpiryNotifiedDate !== today) {
+      presentExpiringStockNotification(expiringSoonCount)
+      setNotifState((prev) => ({ ...prev, lastExpiryNotifiedDate: today }))
+    }
+  }, [
+    enabled,
+    expiringStockEnabled,
+    permissionGranted,
+    expiringSoonCount,
+    notifState.lastExpiryNotifiedDate,
+    setNotifState,
+  ])
 
   return null
 }
@@ -109,6 +165,7 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
               <ProfileSync />
               <WeightSync />
+              <NotificationsSync />
               <Stack>
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />

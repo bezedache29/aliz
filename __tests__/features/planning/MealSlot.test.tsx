@@ -121,4 +121,34 @@ describe('MealSlot', () => {
       expect(queryByText('Aucun aliment ajouté')).toBeNull()
     })
   })
+
+  describe('mode readOnly', () => {
+    it("n'affiche pas le bouton +", async () => {
+      const { queryByTestId } = await render(
+        <MealSlot meal="Petit-déjeuner" plannedItems={[mockMeal]} readOnly />,
+      )
+      expect(queryByTestId('add-button')).toBeNull()
+    })
+
+    it('affiche quand même les repas', async () => {
+      const { getByText } = await render(
+        <MealSlot meal="Petit-déjeuner" plannedItems={[mockMeal]} readOnly />,
+      )
+      expect(getByText('Omelette aux légumes')).toBeTruthy()
+    })
+
+    it("n'appelle pas onPressItem au press d'un repas", async () => {
+      const onPressItem = jest.fn()
+      const { getAllByTestId } = await render(
+        <MealSlot
+          meal="Petit-déjeuner"
+          plannedItems={[mockMeal]}
+          onPressItem={onPressItem}
+          readOnly
+        />,
+      )
+      fireEvent.press(getAllByTestId('meal-item')[0])
+      expect(onPressItem).not.toHaveBeenCalled()
+    })
+  })
 })

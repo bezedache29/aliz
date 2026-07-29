@@ -36,6 +36,12 @@ jest.mock('@/src/apis/backendApi/hooks/activity/useActivities', () => ({
   }),
 }))
 
+jest.mock('@/src/apis/backendApi/hooks/activity/useActivitySync', () => ({
+  useActivitySync: () => ({
+    mutateAsync: jest.fn().mockResolvedValue(undefined),
+  }),
+}))
+
 jest.mock('@/src/apis/backendApi/hooks/strava/useStravaStatus', () => ({
   useStravaStatus: () => ({
     data: { connected: mockStravaConnected, athleteName: null, lastSyncedAt: null },

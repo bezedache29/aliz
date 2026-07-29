@@ -32,10 +32,16 @@ function asCookingMethod(value: string | undefined): RecipeCookingMethod | undef
     : undefined
 }
 
-function asSeasons(values: string[] | undefined): RecipeSeason[] | undefined {
-  return values?.filter((v) => (RECIPE_SEASONS as string[]).includes(v)) as
-    | RecipeSeason[]
-    | undefined
+function asSeasons(values: string[] | undefined): RecipeSeason[] {
+  return (values ?? []).filter((v) => (RECIPE_SEASONS as string[]).includes(v)) as RecipeSeason[]
+}
+
+// Le LLM ne garantit pas la présence de chaque champ numérique pour chaque ingrédient
+// (LlmService ne valide que la présence globale de "ingredients", pas ses sous-champs) —
+// alors que ces champs sont requis côté backend pour enregistrer la recette. On sécurise
+// donc chaque valeur ici plutôt que de laisser passer `undefined` jusqu'à la requête.
+function asNumber(value: number | undefined): number {
+  return typeof value === 'number' && !Number.isNaN(value) ? value : 0
 }
 
 function ingredientDTOtoIngredient(
@@ -48,15 +54,15 @@ function ingredientDTOtoIngredient(
       name: dto.foodName,
       source: 'manual',
       per100g: {
-        kcal: dto.per100gKcal,
-        proteines: dto.per100gProteines,
-        glucides: dto.per100gGlucides,
-        lipides: dto.per100gLipides,
-        fibres: dto.per100gFibres,
-        sel: dto.per100gSel,
+        kcal: asNumber(dto.per100gKcal),
+        proteines: asNumber(dto.per100gProteines),
+        glucides: asNumber(dto.per100gGlucides),
+        lipides: asNumber(dto.per100gLipides),
+        fibres: asNumber(dto.per100gFibres),
+        sel: asNumber(dto.per100gSel),
       },
     },
-    quantityG: dto.quantityG,
+    quantityG: asNumber(dto.quantityG),
   }
 }
 

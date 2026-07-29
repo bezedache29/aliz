@@ -23,9 +23,10 @@ const MEAL_COLORS: Record<MealType, (c: ReturnType<typeof useColors>) => string>
 type MealSlotProps = {
   meal: MealType
   plannedItems: PlannedMeal[]
-  onAdd: () => void
-  onPressItem: (item: PlannedMeal) => void
+  onAdd?: () => void
+  onPressItem?: (item: PlannedMeal) => void
   showSeparator?: boolean
+  readOnly?: boolean
 }
 
 export function MealSlot({
@@ -34,6 +35,7 @@ export function MealSlot({
   onAdd,
   onPressItem,
   showSeparator = true,
+  readOnly = false,
 }: MealSlotProps) {
   const c = useColors()
   const mealColor = MEAL_COLORS[meal](c)
@@ -74,29 +76,89 @@ export function MealSlot({
                 kcal
               </Text>
               <Text variant="caption" color="muted">
-                · P{Math.round(totalP)}g G{Math.round(totalG)}g L{Math.round(totalL)}g
+                ·
+              </Text>
+              <Text variant="caption" style={{ color: c.tertiary, fontWeight: '700' }}>
+                P{Math.round(totalP)}g
+              </Text>
+              <Text variant="caption" style={{ color: c.warning, fontWeight: '700' }}>
+                G{Math.round(totalG)}g
+              </Text>
+              <Text variant="caption" style={{ color: c.info, fontWeight: '700' }}>
+                L{Math.round(totalL)}g
               </Text>
             </View>
           )}
         </View>
 
-        <TouchableOpacity
-          testID="add-button"
-          onPress={onAdd}
-          activeOpacity={0.8}
-          style={[
-            tw`w-9 h-9 rounded-full items-center justify-center shrink-0`,
-            { backgroundColor: c.primary },
-          ]}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        {!readOnly && (
+          <TouchableOpacity
+            testID="add-button"
+            onPress={onAdd}
+            activeOpacity={0.8}
+            style={[
+              tw`w-9 h-9 rounded-full items-center justify-center shrink-0`,
+              { backgroundColor: c.primary },
+            ]}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Items list */}
-      {plannedItems.map((item, index) => (
-        <View key={item.id}>
-          {index === 0 && (
+      {plannedItems.map((item, index) => {
+        const ItemContainer = readOnly ? View : TouchableOpacity
+        return (
+          <View key={item.id}>
+            {index === 0 && (
+              <View
+                style={{
+                  height: StyleSheet.hairlineWidth,
+                  backgroundColor: c.border,
+                  marginLeft: 60,
+                }}
+              />
+            )}
+            <ItemContainer
+              testID="meal-item"
+              {...(!readOnly && { onPress: () => onPressItem?.(item), activeOpacity: 0.75 })}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingVertical: 10,
+                paddingLeft: 60,
+              }}
+            >
+              <View style={tw`flex-1`}>
+                <Text variant="body" numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <View style={tw`flex-row items-center gap-1.5`}>
+                  {item.quantityG != null && (
+                    <>
+                      <Text variant="caption" color="muted">
+                        {item.quantityG}g
+                      </Text>
+                      <Text variant="caption" color="muted">
+                        ·
+                      </Text>
+                    </>
+                  )}
+                  <Ionicons name="flame" size={11} color={c.primary} />
+                  <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                    {item.kcal}
+                  </Text>
+                  <Text variant="caption" color="muted">
+                    kcal
+                  </Text>
+                </View>
+              </View>
+              {!readOnly && (
+                <Ionicons name="chevron-forward" size={14} color={c.textMuted} style={tw`mr-1`} />
+              )}
+            </ItemContainer>
             <View
               style={{
                 height: StyleSheet.hairlineWidth,
@@ -104,50 +166,9 @@ export function MealSlot({
                 marginLeft: 60,
               }}
             />
-          )}
-          <TouchableOpacity
-            testID="meal-item"
-            onPress={() => onPressItem(item)}
-            activeOpacity={0.75}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingVertical: 10,
-              paddingLeft: 60,
-            }}
-          >
-            <View style={tw`flex-1`}>
-              <Text variant="body" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <View style={tw`flex-row items-center gap-1.5`}>
-                {item.quantityG != null && (
-                  <>
-                    <Text variant="caption" color="muted">
-                      {item.quantityG}g
-                    </Text>
-                    <Text variant="caption" color="muted">
-                      ·
-                    </Text>
-                  </>
-                )}
-                <Ionicons name="flame" size={11} color={c.primary} />
-                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
-                  {item.kcal}
-                </Text>
-                <Text variant="caption" color="muted">
-                  kcal
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={14} color={c.textMuted} style={tw`mr-1`} />
-          </TouchableOpacity>
-          <View
-            style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.border, marginLeft: 60 }}
-          />
-        </View>
-      ))}
+          </View>
+        )
+      })}
 
       {showSeparator && plannedItems.length === 0 && (
         <View

@@ -70,6 +70,7 @@ export default function FridgeScreen() {
     expiryDate: null,
   })
   const [calendarVisible, setCalendarVisible] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(dayjs().format('YYYY-MM-DD'))
   const editSheetRef = useRef<BottomSheetModal>(null)
 
   const alertItems = useMemo(
@@ -392,6 +393,7 @@ export default function FridgeScreen() {
             <TouchableOpacity
               onPress={() => {
                 Keyboard.dismiss()
+                setCalendarMonth(editForm.expiryDate ?? dayjs().format('YYYY-MM-DD'))
                 setCalendarVisible(true)
               }}
               style={[
@@ -441,42 +443,86 @@ export default function FridgeScreen() {
         animationType="fade"
         onRequestClose={() => setCalendarVisible(false)}
       >
-        <TouchableOpacity
-          style={tw`flex-1 bg-black/50 justify-center px-4`}
-          activeOpacity={1}
-          onPress={() => setCalendarVisible(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[tw`rounded-2xl overflow-hidden`, { backgroundColor: c.surface }]}
-          >
-            <Calendar
-              onDayPress={(day) => {
-                setEditField('expiryDate', day.dateString)
-                setCalendarVisible(false)
-              }}
-              markedDates={
-                editForm.expiryDate
-                  ? { [editForm.expiryDate]: { selected: true, selectedColor: c.primary } }
-                  : {}
-              }
-              minDate={dayjs().format('YYYY-MM-DD')}
-              theme={{
-                backgroundColor: c.surface,
-                calendarBackground: c.surface,
-                textSectionTitleColor: c.textMuted,
-                selectedDayBackgroundColor: c.primary,
-                selectedDayTextColor: '#FFFFFF',
-                todayTextColor: c.primary,
-                dayTextColor: c.textPrimary,
-                textDisabledColor: c.textMuted,
-                dotColor: c.primary,
-                arrowColor: c.primary,
-                monthTextColor: c.textPrimary,
-              }}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
+        <View style={tw`flex-1 bg-black/50 justify-center px-4`}>
+          <View style={[tw`rounded-2xl overflow-hidden`, { backgroundColor: c.surface }]}>
+            <View style={tw`flex-row items-center justify-between px-4 pt-4`}>
+              <Text variant="body" style={{ fontWeight: '700' }}>
+                Choisir une date
+              </Text>
+              <TouchableOpacity hitSlop={8} onPress={() => setCalendarVisible(false)}>
+                <Ionicons name="close" size={22} color={c.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={tw`flex-row items-center justify-center gap-3 pt-2`}>
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth((prev) => dayjs(prev).subtract(1, 'year').format('YYYY-MM-DD'))
+                }
+                style={[tw`px-3 py-1.5 rounded-lg`, { backgroundColor: c.surfaceElevated }]}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  − 1 an
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth((prev) => dayjs(prev).add(1, 'year').format('YYYY-MM-DD'))
+                }
+                style={[tw`px-3 py-1.5 rounded-lg`, { backgroundColor: c.surfaceElevated }]}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  + 1 an
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ minHeight: 420, justifyContent: 'space-between' }}>
+              <Calendar
+                key={calendarMonth}
+                current={calendarMonth}
+                onMonthChange={(month) => setCalendarMonth(month.dateString)}
+                onDayPress={(day) => {
+                  setEditField('expiryDate', day.dateString)
+                  setCalendarVisible(false)
+                }}
+                markedDates={
+                  editForm.expiryDate
+                    ? { [editForm.expiryDate]: { selected: true, selectedColor: c.primary } }
+                    : {}
+                }
+                minDate={dayjs().format('YYYY-MM-DD')}
+                firstDay={1}
+                showSixWeeks
+                theme={{
+                  backgroundColor: c.surface,
+                  calendarBackground: c.surface,
+                  textSectionTitleColor: c.textMuted,
+                  selectedDayBackgroundColor: c.primary,
+                  selectedDayTextColor: '#FFFFFF',
+                  todayTextColor: c.primary,
+                  dayTextColor: c.textPrimary,
+                  textDisabledColor: c.textMuted,
+                  dotColor: c.primary,
+                  arrowColor: c.primary,
+                  monthTextColor: c.textPrimary,
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={() => {
+                  setEditField('expiryDate', dayjs().format('YYYY-MM-DD'))
+                  setCalendarVisible(false)
+                }}
+                style={tw`items-center pb-4 pt-2`}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  Aujourd&apos;hui
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   )

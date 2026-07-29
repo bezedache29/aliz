@@ -283,6 +283,7 @@ export default function RecipeCreateScreen() {
                     value={value && value > 0 ? String(value) : ''}
                     onChangeText={(t) => onChange(t === '' ? undefined : toNum(t))}
                     keyboardType="numeric"
+                    selectTextOnFocus
                   />
                 )}
               />

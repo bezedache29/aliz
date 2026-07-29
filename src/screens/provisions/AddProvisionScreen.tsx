@@ -9,7 +9,6 @@ import {
 import { isAxiosError } from 'axios'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useRouter } from 'expo-router'
-import { useAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -25,6 +24,8 @@ import { Calendar } from 'react-native-calendars'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useCreateCustomFood } from '@/src/apis/backendApi/hooks/customFoods/useCreateCustomFood'
+import { useCustomFoods } from '@/src/apis/backendApi/hooks/customFoods/useCustomFoods'
 import { useCreateStock } from '@/src/apis/backendApi/hooks/stock/useCreateStock'
 import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch'
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
@@ -42,7 +43,7 @@ import {
   StockCategory,
   StockItemState,
 } from '@/src/models/stock/stock-item.model'
-import { customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
+import { searchCustomFoods } from '@/src/utils/food-search'
 
 type Tab = 'search' | 'barcode'
 type SearchSource = 'ciqual' | 'off' | 'both'
@@ -50,6 +51,7 @@ type SearchSource = 'ciqual' | 'off' | 'both'
 type FormState = {
   name: string
   brand: string
+  barcode: string
   quantity: string
   unit: string
   category: StockCategory
@@ -64,6 +66,7 @@ type FormState = {
 const DEFAULT_FORM: FormState = {
   name: '',
   brand: '',
+  barcode: '',
   quantity: '1',
   unit: 'pièce(s)',
   category: 'Frais',
@@ -88,7 +91,8 @@ export default function AddProvisionScreen() {
   const c = useColors()
   const router = useRouter()
   const { mutate: createStock } = useCreateStock()
-  const [customFoods] = useAtom(customFoodsAtom)
+  const { mutate: createCustomFood } = useCreateCustomFood()
+  const { data: customFoods = [], isLoading: customFoodsLoading } = useCustomFoods()
 
   const [activeTab, setActiveTab] = useState<Tab>('search')
   const [searchSource, setSearchSource] = useState<SearchSource>('ciqual')
@@ -98,6 +102,7 @@ export default function AddProvisionScreen() {
   const [isManual, setIsManual] = useState(false)
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [calendarVisible, setCalendarVisible] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(dayjs().format('YYYY-MM-DD'))
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [permission, requestPermission] = useCameraPermissions()
@@ -112,7 +117,14 @@ export default function AddProvisionScreen() {
     searchQuery,
     searchSource === 'off' || searchSource === 'both',
   )
-  const { data: barcodeFood, isFetching: barcodeLoading } = useFoodByBarcode(scannedBarcode)
+  const customBarcodeMatch = scannedBarcode
+    ? customFoods.find((f) => f.barcode === scannedBarcode)
+    : undefined
+  const { data: offBarcodeFood, isFetching: offBarcodeLoading } = useFoodByBarcode(
+    customBarcodeMatch ? null : scannedBarcode,
+  )
+  const barcodeFood = customBarcodeMatch ?? offBarcodeFood
+  const barcodeLoading = offBarcodeLoading || (!!scannedBarcode && customFoodsLoading)
 
   const customResults = searchCustomFoods(customFoods, searchQuery)
 
@@ -139,10 +151,10 @@ export default function AddProvisionScreen() {
     formSheetRef.current?.present()
   }
 
-  function openManualForm() {
+  function openManualForm(prefillBarcode?: string) {
     setSelectedFood(null)
     setIsManual(true)
-    setForm(DEFAULT_FORM)
+    setForm({ ...DEFAULT_FORM, barcode: prefillBarcode ?? '' })
     formSheetRef.current?.present()
   }
 
@@ -168,6 +180,15 @@ export default function AddProvisionScreen() {
             lipides: parseFloat(form.lipides) || 0,
           }
         : undefined
+
+    if (isManual && form.barcode.trim() && manualPer100g) {
+      createCustomFood({
+        name: form.name.trim(),
+        brand: form.brand.trim() || undefined,
+        barcode: form.barcode.trim(),
+        per100g: manualPer100g,
+      })
+    }
 
     createStock(
       {
@@ -227,7 +248,7 @@ export default function AddProvisionScreen() {
       <ScreenHeader title="Ajouter une provision" />
 
       {/* Onglets */}
-      <View style={tw`flex-row gap-2 px-4 pb-3`}>
+      <View style={tw`flex-row gap-2 px-4 pb-3 mt-5`}>
         {(
           [
             { key: 'search', label: 'Recherche', icon: 'search-outline' },
@@ -275,7 +296,9 @@ export default function AddProvisionScreen() {
           requestPermission={requestPermission}
           scannedBarcode={scannedBarcode}
           isLoading={barcodeLoading}
+          notFound={!!scannedBarcode && !barcodeLoading && !barcodeFood}
           onScan={setScannedBarcode}
+          onManual={() => openManualForm(scannedBarcode ?? undefined)}
         />
       )}
 
@@ -290,6 +313,7 @@ export default function AddProvisionScreen() {
         onDismiss={() => {
           setSelectedFood(null)
           setIsManual(false)
+          setScannedBarcode(null)
         }}
       >
         <BottomSheetScrollView
@@ -347,6 +371,32 @@ export default function AddProvisionScreen() {
                   },
                 ]}
               />
+            </FormField>
+          )}
+
+          {/* Code barre (manuel uniquement) */}
+          {isManual && (
+            <FormField label="Code barre (optionnel)">
+              <BottomSheetTextInput
+                value={form.barcode}
+                onChangeText={(v) => setField('barcode', v)}
+                placeholder="ex : 3123456789012"
+                placeholderTextColor={c.textMuted}
+                keyboardType="number-pad"
+                style={[
+                  tw`px-4 rounded-xl`,
+                  {
+                    color: c.textPrimary,
+                    backgroundColor: c.surfaceElevated,
+                    height: 48,
+                    fontSize: 15,
+                  },
+                ]}
+              />
+              <Text variant="caption" color="muted">
+                Rempli automatiquement si tu arrives ici après un scan raté. Renseigne aussi les
+                macros ci-dessous pour le retrouver au prochain scan.
+              </Text>
             </FormField>
           )}
 
@@ -459,6 +509,7 @@ export default function AddProvisionScreen() {
             <TouchableOpacity
               onPress={() => {
                 Keyboard.dismiss()
+                setCalendarMonth(form.expiryDate ?? dayjs().format('YYYY-MM-DD'))
                 setCalendarVisible(true)
               }}
               style={[
@@ -534,42 +585,86 @@ export default function AddProvisionScreen() {
         animationType="fade"
         onRequestClose={() => setCalendarVisible(false)}
       >
-        <TouchableOpacity
-          style={tw`flex-1 bg-black/50 justify-center px-4`}
-          activeOpacity={1}
-          onPress={() => setCalendarVisible(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={[tw`rounded-2xl overflow-hidden`, { backgroundColor: c.surface }]}
-          >
-            <Calendar
-              onDayPress={(day) => {
-                setField('expiryDate', day.dateString)
-                setCalendarVisible(false)
-              }}
-              markedDates={
-                form.expiryDate
-                  ? { [form.expiryDate]: { selected: true, selectedColor: c.primary } }
-                  : {}
-              }
-              minDate={dayjs().format('YYYY-MM-DD')}
-              theme={{
-                backgroundColor: c.surface,
-                calendarBackground: c.surface,
-                textSectionTitleColor: c.textMuted,
-                selectedDayBackgroundColor: c.primary,
-                selectedDayTextColor: '#FFFFFF',
-                todayTextColor: c.primary,
-                dayTextColor: c.textPrimary,
-                textDisabledColor: c.textMuted,
-                dotColor: c.primary,
-                arrowColor: c.primary,
-                monthTextColor: c.textPrimary,
-              }}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
+        <View style={tw`flex-1 bg-black/50 justify-center px-4`}>
+          <View style={[tw`rounded-2xl overflow-hidden`, { backgroundColor: c.surface }]}>
+            <View style={tw`flex-row items-center justify-between px-4 pt-4`}>
+              <Text variant="body" style={{ fontWeight: '700' }}>
+                Choisir une date
+              </Text>
+              <TouchableOpacity hitSlop={8} onPress={() => setCalendarVisible(false)}>
+                <Ionicons name="close" size={22} color={c.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={tw`flex-row items-center justify-center gap-3 pt-2`}>
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth((prev) => dayjs(prev).subtract(1, 'year').format('YYYY-MM-DD'))
+                }
+                style={[tw`px-3 py-1.5 rounded-lg`, { backgroundColor: c.surfaceElevated }]}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  − 1 an
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  setCalendarMonth((prev) => dayjs(prev).add(1, 'year').format('YYYY-MM-DD'))
+                }
+                style={[tw`px-3 py-1.5 rounded-lg`, { backgroundColor: c.surfaceElevated }]}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  + 1 an
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ minHeight: 420, justifyContent: 'space-between' }}>
+              <Calendar
+                key={calendarMonth}
+                current={calendarMonth}
+                onMonthChange={(month) => setCalendarMonth(month.dateString)}
+                onDayPress={(day) => {
+                  setField('expiryDate', day.dateString)
+                  setCalendarVisible(false)
+                }}
+                markedDates={
+                  form.expiryDate
+                    ? { [form.expiryDate]: { selected: true, selectedColor: c.primary } }
+                    : {}
+                }
+                minDate={dayjs().format('YYYY-MM-DD')}
+                firstDay={1}
+                showSixWeeks
+                theme={{
+                  backgroundColor: c.surface,
+                  calendarBackground: c.surface,
+                  textSectionTitleColor: c.textMuted,
+                  selectedDayBackgroundColor: c.primary,
+                  selectedDayTextColor: '#FFFFFF',
+                  todayTextColor: c.primary,
+                  dayTextColor: c.textPrimary,
+                  textDisabledColor: c.textMuted,
+                  dotColor: c.primary,
+                  arrowColor: c.primary,
+                  monthTextColor: c.textPrimary,
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={() => {
+                  setField('expiryDate', dayjs().format('YYYY-MM-DD'))
+                  setCalendarVisible(false)
+                }}
+                style={tw`items-center pb-4 pt-2`}
+              >
+                <Text variant="caption" style={{ color: c.primary, fontWeight: '600' }}>
+                  Aujourd&apos;hui
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   )
@@ -757,14 +852,18 @@ function BarcodeTab({
   requestPermission,
   scannedBarcode,
   isLoading,
+  notFound,
   onScan,
+  onManual,
 }: {
   c: ReturnType<typeof useColors>
   permission: ReturnType<typeof useCameraPermissions>[0]
   requestPermission: ReturnType<typeof useCameraPermissions>[1]
   scannedBarcode: string | null
   isLoading: boolean
+  notFound: boolean
   onScan: (barcode: string) => void
+  onManual: () => void
 }) {
   if (!permission) {
     return (
@@ -788,19 +887,25 @@ function BarcodeTab({
 
   return (
     <View style={tw`flex-1`}>
-      {isLoading || scannedBarcode ? (
+      {notFound ? (
+        <View style={tw`flex-1 items-center pt-12 px-8 gap-4`}>
+          <Ionicons name="close-circle-outline" size={48} color={c.textMuted} />
+          <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
+            Produit introuvable pour ce code-barres.
+          </Text>
+          <Button label="Saisie manuelle" fullWidth onPress={onManual} />
+          <TouchableOpacity onPress={() => onScan('')}>
+            <Text variant="caption" color="muted">
+              Scanner à nouveau
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : isLoading || scannedBarcode ? (
         <View style={tw`flex-1 items-center pt-12 gap-4`}>
           <ActivityIndicator size="large" color={c.primary} />
           <Text variant="body" color="secondary" style={{ textAlign: 'center' }}>
             {isLoading ? 'Recherche du produit...' : 'Code scanné, chargement...'}
           </Text>
-          {scannedBarcode && !isLoading && (
-            <TouchableOpacity onPress={() => onScan('')}>
-              <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-                Scanner à nouveau
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
       ) : (
         <View style={tw`flex-1`}>

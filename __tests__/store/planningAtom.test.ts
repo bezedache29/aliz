@@ -1,18 +1,11 @@
 import { createStore } from 'jotai'
 
 import dayjs from '@/src/config/dayjs'
-import type { PlannedMeal } from '@/src/models/planning/planning.model'
-import { selectedDateAtom, weekPlanAtom } from '@/src/store/planningAtom'
-
-const mockMeal: PlannedMeal = {
-  id: '1',
-  name: 'Omelette aux légumes',
-  kcal: 456,
-  proteines: 32,
-  glucides: 12,
-  lipides: 28,
-  meal: 'Petit-déjeuner',
-}
+import {
+  openWeeklyGenerateSheetAtom,
+  rejectedSuggestionsAtom,
+  selectedDateAtom,
+} from '@/src/store/planningAtom'
 
 describe('selectedDateAtom', () => {
   it('initialise sur le jour courant', () => {
@@ -29,32 +22,40 @@ describe('selectedDateAtom', () => {
   })
 })
 
-describe('weekPlanAtom — journal des repas consommés', () => {
-  it('initialise avec un objet vide', () => {
+describe('openWeeklyGenerateSheetAtom', () => {
+  it('démarre à 0', () => {
     const store = createStore()
-    expect(store.get(weekPlanAtom)).toEqual({})
+    expect(store.get(openWeeklyGenerateSheetAtom)).toBe(0)
   })
 
-  it('stocke des repas planifiés pour une clé de date', () => {
+  it('s’incrémente à chaque demande d’ouverture', () => {
     const store = createStore()
-    store.set(weekPlanAtom, { '2026-01-15': [mockMeal] })
-    expect(store.get(weekPlanAtom)['2026-01-15']).toHaveLength(1)
-    expect(store.get(weekPlanAtom)['2026-01-15'][0].name).toBe('Omelette aux légumes')
+    store.set(openWeeklyGenerateSheetAtom, (prev) => prev + 1)
+    store.set(openWeeklyGenerateSheetAtom, (prev) => prev + 1)
+    expect(store.get(openWeeklyGenerateSheetAtom)).toBe(2)
+  })
+})
+
+describe('rejectedSuggestionsAtom — suggestions IA rejetées dans le Journal', () => {
+  it('initialise avec un tableau vide', () => {
+    const store = createStore()
+    expect(store.get(rejectedSuggestionsAtom)).toEqual([])
   })
 
-  it('supporte plusieurs dates indépendantes', () => {
+  it('mémorise la clé d’une suggestion rejetée', () => {
     const store = createStore()
-    const meal2: PlannedMeal = { ...mockMeal, id: '2', meal: 'Déjeuner' }
-    store.set(weekPlanAtom, {
-      '2026-01-15': [mockMeal],
-      '2026-01-16': [meal2],
-    })
-    expect(store.get(weekPlanAtom)['2026-01-15']).toHaveLength(1)
-    expect(store.get(weekPlanAtom)['2026-01-16'][0].meal).toBe('Déjeuner')
+    const key = '2026-01-15:Déjeuner:Plat'
+    store.set(rejectedSuggestionsAtom, [key])
+    expect(store.get(rejectedSuggestionsAtom)).toContain(key)
   })
 
-  it('retourne undefined pour une date sans repas planifié', () => {
+  it('accumule plusieurs rejets indépendants', () => {
     const store = createStore()
-    expect(store.get(weekPlanAtom)['2099-01-01']).toBeUndefined()
+    store.set(rejectedSuggestionsAtom, (prev) => [...prev, '2026-01-15:Déjeuner:Plat'])
+    store.set(rejectedSuggestionsAtom, (prev) => [...prev, '2026-01-15:Dîner:'])
+    expect(store.get(rejectedSuggestionsAtom)).toEqual([
+      '2026-01-15:Déjeuner:Plat',
+      '2026-01-15:Dîner:',
+    ])
   })
 })

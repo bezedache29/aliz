@@ -3,7 +3,6 @@ import { notifyManager, QueryClient, QueryClientProvider } from '@tanstack/react
 import React from 'react'
 
 import { useRegenerateMealSlot } from '@/src/apis/backendApi/hooks/planning/useRegenerateMealSlot'
-import type { PlannedRecipeSlot } from '@/src/models/planning/planning.model'
 
 import { backendClient } from '@/src/apis/backendApi/client'
 
@@ -33,14 +32,20 @@ function makeQueryClient() {
 }
 
 const recipeResponse = {
-  recipe: {
-    id: 'r-42',
-    name: 'Salade niçoise',
-    kcal: 420,
-    proteines: 25,
-    glucides: 20,
-    lipides: 18,
-  },
+  courses: [
+    {
+      course: '',
+      recipe: {
+        id: 'r-42',
+        name: 'Salade niçoise',
+        kcal: 420,
+        proteines: 25,
+        glucides: 20,
+        lipides: 18,
+        ingredients: [],
+      },
+    },
+  ],
 }
 
 describe('useRegenerateMealSlot', () => {
@@ -56,34 +61,64 @@ describe('useRegenerateMealSlot', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.date).toBe('2026-06-24')
     expect(result.current.data?.meal).toBe('Déjeuner')
     expect(result.current.data?.status).toBe('done')
+    expect(result.current.data?.courses[0].recipe.name).toBe('Salade niçoise')
   })
 
-  it('met à jour le cache planning pour le bon créneau', async () => {
+  it('gère un menu à plusieurs plats', async () => {
+    mockedPost.mockResolvedValueOnce({
+      data: {
+        courses: [
+          {
+            course: 'Entrée',
+            recipe: {
+              id: 'r-1',
+              name: 'Melon au jambon',
+              kcal: 120,
+              proteines: 8,
+              glucides: 10,
+              lipides: 4,
+              ingredients: [],
+            },
+          },
+          {
+            course: 'Dessert',
+            recipe: {
+              id: 'r-2',
+              name: 'Compote de pommes',
+              kcal: 90,
+              proteines: 1,
+              glucides: 20,
+              lipides: 0,
+              ingredients: [],
+            },
+          },
+        ],
+      },
+    })
+    const queryClient = makeQueryClient()
+    const { result } = await renderHook(() => useRegenerateMealSlot(), {
+      wrapper: makeWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ dateKey: '2026-06-24', mealType: 'Dîner' })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.courses).toHaveLength(2)
+    expect(result.current.data?.courses[0].course).toBe('Entrée')
+    expect(result.current.data?.courses[1].course).toBe('Dessert')
+  })
+
+  it('invalide le cache planning par préfixe (la lecture se fait par semaine, pas par jour)', async () => {
     mockedPost.mockResolvedValueOnce({ data: recipeResponse })
     const queryClient = makeQueryClient()
-
-    const existing: PlannedRecipeSlot[] = [
-      {
-        meal: 'Déjeuner',
-        status: 'done',
-        recipe: { id: 'r-1', name: 'Ancien', kcal: 300, proteines: 15, glucides: 25, lipides: 10 },
-      },
-      {
-        meal: 'Dîner',
-        status: 'done',
-        recipe: {
-          id: 'r-2',
-          name: 'Dîner stable',
-          kcal: 500,
-          proteines: 30,
-          glucides: 40,
-          lipides: 20,
-        },
-      },
-    ]
-    queryClient.setQueryData(['planning', 'week', '2026-06-24'], existing)
+    // La semaine affichée est mise en cache sous la clé ancrée sur le lundi, pas sur le jour régénéré.
+    queryClient.setQueryData(['planning', 'week', '2026-06-22'], [])
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
 
     const { result } = await renderHook(() => useRegenerateMealSlot(), {
       wrapper: makeWrapper(queryClient),
@@ -94,9 +129,25 @@ describe('useRegenerateMealSlot', () => {
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    const cached = queryClient.getQueryData<PlannedRecipeSlot[]>(['planning', 'week', '2026-06-24'])
-    expect(cached![0].recipe?.name).toBe('Salade niçoise')
-    expect(cached![1].recipe?.name).toBe('Dîner stable')
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['planning', 'week'] })
+  })
+
+  it('invalide le cache des recettes pour que la nouvelle recette IA soit trouvable', async () => {
+    mockedPost.mockResolvedValueOnce({ data: recipeResponse })
+    const queryClient = makeQueryClient()
+    queryClient.setQueryData(['recipes'], [])
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
+
+    const { result } = await renderHook(() => useRegenerateMealSlot(), {
+      wrapper: makeWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({ dateKey: '2026-06-24', mealType: 'Déjeuner' })
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['recipes'] })
   })
 
   it("accepte un prompt optionnel et l'envoie au backend", async () => {

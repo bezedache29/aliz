@@ -65,6 +65,31 @@ describe('generatedRecipeDTOtoRecipe', () => {
     expect(per100g.lipides).toBe(3.6)
   })
 
+  // Le backend exige des champs numériques (kcal, quantité...) sur chaque ingrédient, mais
+  // LlmService ne valide que la présence globale de "ingredients", pas ses sous-champs — le
+  // LLM peut donc omettre une valeur ponctuellement. Le mapper doit défaulter à 0 plutôt que
+  // de laisser passer `undefined`, sous peine de faire échouer l'enregistrement de la recette.
+  it('defaults missing per-ingredient numeric fields to 0 instead of undefined', () => {
+    const dto: GeneratedRecipeDTO = {
+      ...baseDTO,
+      ingredients: [
+        {
+          foodName: 'Mystère',
+          fromStock: false,
+        } as GeneratedRecipeDTO['ingredients'][number],
+      ],
+    }
+    const result = generatedRecipeDTOtoRecipe(dto)
+    const { per100g } = result.ingredients[0].food
+    expect(per100g.kcal).toBe(0)
+    expect(per100g.proteines).toBe(0)
+    expect(per100g.glucides).toBe(0)
+    expect(per100g.lipides).toBe(0)
+    expect(per100g.fibres).toBe(0)
+    expect(per100g.sel).toBe(0)
+    expect(result.ingredients[0].quantityG).toBe(0)
+  })
+
   it('generates distinct ids for each ingredient', () => {
     const dto: GeneratedRecipeDTO = {
       ...baseDTO,
@@ -105,10 +130,13 @@ describe('generatedRecipeDTOtoRecipe', () => {
     expect(result.seasons).toEqual(['Automne'])
   })
 
-  it('keeps seasons undefined when absent from the DTO', () => {
+  it('defaults seasons to an empty array when absent from the DTO', () => {
+    // Le backend exige "seasons" comme tableau requis (StoreRecipeRequest) — le mapper ne
+    // doit jamais laisser passer `undefined`, sous peine de faire échouer l'enregistrement
+    // de la recette générée quand le LLM omet ce champ optionnel.
     const { seasons: _seasons, ...rest } = baseDTO
     const result = generatedRecipeDTOtoRecipe(rest)
-    expect(result.seasons).toBeUndefined()
+    expect(result.seasons).toEqual([])
   })
 
   it('maps an empty ingredient list', () => {

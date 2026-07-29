@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
 import { useActivities } from '@/src/apis/backendApi/hooks/activity/useActivities'
+import { useActivitySync } from '@/src/apis/backendApi/hooks/activity/useActivitySync'
 import { useStravaStatus } from '@/src/apis/backendApi/hooks/strava/useStravaStatus'
 import { useDeleteWeight } from '@/src/apis/backendApi/hooks/weight/useDeleteWeight'
 import { useWeightHistory } from '@/src/apis/backendApi/hooks/weight/useWeightHistory'
@@ -58,8 +59,13 @@ export default function TrackingScreen() {
     isLoading: isActivitiesLoading,
     refetch: refetchActivities,
   } = useActivities()
+  const { mutateAsync: syncActivities } = useActivitySync()
   const { refreshing, refresh } = useRefresh(() =>
-    Promise.all([refetch(), refetchStravaStatus(), refetchActivities()]).then(() => {}),
+    Promise.all([
+      refetch(),
+      refetchStravaStatus(),
+      stravaStatus?.connected ? syncActivities() : refetchActivities(),
+    ]).then(() => {}),
   )
   const [historyVisibleCount, setHistoryVisibleCount] = useState(PREVIEW_COUNT)
   const [activitiesVisibleCount, setActivitiesVisibleCount] = useState(PREVIEW_COUNT)

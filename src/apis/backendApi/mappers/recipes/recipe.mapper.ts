@@ -12,7 +12,7 @@ import type {
   RecipeSeason,
 } from '@/src/models/recipe/recipe.model'
 
-function ingredientDTOtoIngredient(dto: RecipeIngredientDTO): RecipeIngredient {
+export function ingredientDTOtoIngredient(dto: RecipeIngredientDTO): RecipeIngredient {
   return {
     food: {
       id: dto.foodId,

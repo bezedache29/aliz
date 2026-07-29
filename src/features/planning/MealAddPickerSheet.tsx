@@ -17,10 +17,11 @@ type Props = {
   mealType: MealType | null
   onSelectFood: () => void
   onSelectRecipe: () => void
+  onSelectAiRecipe: () => void
 }
 
 export const MealAddPickerSheet = forwardRef<BottomSheetModal, Props>(
-  ({ mealType, onSelectFood, onSelectRecipe }, ref) => {
+  ({ mealType, onSelectFood, onSelectRecipe, onSelectAiRecipe }, ref) => {
     const c = useColors()
 
     const renderBackdrop = useCallback(
@@ -33,7 +34,7 @@ export const MealAddPickerSheet = forwardRef<BottomSheetModal, Props>(
     return (
       <BottomSheetModal
         ref={ref}
-        snapPoints={['32%']}
+        snapPoints={['42%']}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: c.surface }}
         handleIndicatorStyle={{ backgroundColor: c.border }}
@@ -44,6 +45,7 @@ export const MealAddPickerSheet = forwardRef<BottomSheetModal, Props>(
           </Text>
 
           <TouchableOpacity
+            testID="add-food-option"
             activeOpacity={0.8}
             onPress={onSelectFood}
             style={[
@@ -71,6 +73,7 @@ export const MealAddPickerSheet = forwardRef<BottomSheetModal, Props>(
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="add-recipe-option"
             activeOpacity={0.8}
             onPress={onSelectRecipe}
             style={[
@@ -92,6 +95,34 @@ export const MealAddPickerSheet = forwardRef<BottomSheetModal, Props>(
               </Text>
               <Text variant="caption" color="secondary">
                 Choisir parmi mes recettes
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            testID="add-ai-recipe-option"
+            activeOpacity={0.8}
+            onPress={onSelectAiRecipe}
+            style={[
+              tw`flex-row items-center gap-4 p-4 rounded-2xl`,
+              { backgroundColor: c.surfaceElevated },
+            ]}
+          >
+            <View
+              style={[
+                tw`w-10 h-10 rounded-full items-center justify-center`,
+                { backgroundColor: c.warning + '25' },
+              ]}
+            >
+              <Ionicons name="sparkles-outline" size={20} color={c.warning} />
+            </View>
+            <View style={tw`flex-1`}>
+              <Text variant="body" style={{ fontWeight: '600' }}>
+                Recette générée par IA
+              </Text>
+              <Text variant="caption" color="secondary">
+                Prompt libre + stock en option
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={c.textSecondary} />

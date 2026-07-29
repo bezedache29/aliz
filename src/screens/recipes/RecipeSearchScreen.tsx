@@ -1,20 +1,24 @@
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useSetAtom } from 'jotai'
 import { useMemo, useState } from 'react'
 import {
   FlatList,
   RefreshControl,
   SectionList,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 
+import { useCreateJournalEntry } from '@/src/apis/backendApi/hooks/journal/useCreateJournalEntry'
 import { useRecipes } from '@/src/apis/backendApi/hooks/recipes/useRecipes'
 import { useUpdateRecipe } from '@/src/apis/backendApi/hooks/recipes/useUpdateRecipe'
+import { useDeleteStock } from '@/src/apis/backendApi/hooks/stock/useDeleteStock'
+import { useStock } from '@/src/apis/backendApi/hooks/stock/useStock'
+import { useUpdateStock } from '@/src/apis/backendApi/hooks/stock/useUpdateStock'
 import { Badge } from '@/src/components/badge'
 import { ScreenHeader } from '@/src/components/screen-header'
 import { ScrollView } from '@/src/components/scroll-view'
@@ -39,7 +43,12 @@ import {
   RecipeSeason,
   computeRecipeNutrition,
 } from '@/src/models/recipe/recipe.model'
-import { weekPlanAtom } from '@/src/store/planningAtom'
+import {
+  buildStockDeduction,
+  deductStockQuantity,
+  findMatchingStockItem,
+  type StockDeduction,
+} from '@/src/models/stock/stock-item.model'
 
 function searchRecipes(recipes: Recipe[], query: string): Recipe[] {
   if (!query.trim()) return recipes
@@ -93,7 +102,10 @@ export default function RecipeSearchScreen() {
 
   const { data: recipes = [] } = useRecipes()
   const { mutate: updateRecipe } = useUpdateRecipe()
-  const setWeekPlan = useSetAtom(weekPlanAtom)
+  const { data: stockItems = [] } = useStock()
+  const { mutate: updateStock } = useUpdateStock()
+  const { mutate: deleteStock } = useDeleteStock()
+  const { mutate: createJournalEntry } = useCreateJournalEntry()
   const todayKey = dayjs().format('YYYY-MM-DD')
 
   const [activeTab, setActiveTab] = useState<'my' | 'ai'>('my')
@@ -160,16 +172,35 @@ export default function RecipeSearchScreen() {
   function handleAddRecipe(recipe: Recipe) {
     if (!mealType) return
     const nutrition = computeRecipeNutrition(recipe.ingredients, recipe.servings)
-    const meal: PlannedMeal = {
-      id: `${Date.now()}-${recipe.id}`,
+
+    const stockDeductions: StockDeduction[] = []
+    for (const ingredient of recipe.ingredients) {
+      const stockItem = findMatchingStockItem(stockItems, ingredient.food)
+      if (!stockItem) continue
+      const newQuantity = deductStockQuantity(stockItem, ingredient.quantityG)
+      stockDeductions.push(buildStockDeduction(stockItem, stockItem.quantity - newQuantity))
+      if (newQuantity <= 0) {
+        deleteStock(stockItem.id)
+      } else {
+        updateStock({ ...stockItem, quantity: newQuantity })
+      }
+    }
+
+    const meal: Omit<PlannedMeal, 'id'> = {
       name: recipe.name,
       meal: mealType as MealType,
       ...nutrition,
+      ...(stockDeductions.length > 0 ? { stockDeductions } : {}),
     }
-    setWeekPlan((prev) => ({
-      ...prev,
-      [todayKey]: [...(prev[todayKey] ?? []), meal],
-    }))
+    createJournalEntry({ meal, dateKey: todayKey })
+
+    if (stockDeductions.length > 0) {
+      ToastAndroid.show(
+        `Provisions mises à jour (${stockDeductions.length} ingrédient${stockDeductions.length > 1 ? 's' : ''})`,
+        ToastAndroid.SHORT,
+      )
+    }
+
     router.back()
   }
 

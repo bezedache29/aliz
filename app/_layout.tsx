@@ -1,4 +1,5 @@
 import dayjs from '@/src/config/dayjs'
+import '@/src/config/calendarLocale'
 import '@/src/config/reactotron'
 
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
@@ -14,10 +15,12 @@ import { ScrollView, Text, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import 'react-native-reanimated'
 
+import { useActivitySync } from '@/src/apis/backendApi/hooks/activity/useActivitySync'
 import { useProfile } from '@/src/apis/backendApi/hooks/profile/useProfile'
 import { useWeightSync } from '@/src/apis/backendApi/hooks/weight/useWeightSync'
 import { profileToOnboardingData } from '@/src/apis/backendApi/mappers/profile/profile.mapper'
 import { CustomSplash } from '@/src/components/custom-splash'
+import { WeeklyPlanningCheck } from '@/src/features/planning/WeeklyPlanningCheck'
 import { useColorScheme } from '@/src/hooks/use-color-scheme'
 import { useExpiringSoonCount } from '@/src/hooks/use-expiring-soon-count'
 import { onboardingAtom } from '@/src/store/onboardingAtom'
@@ -33,6 +36,16 @@ import {
 
 function WeightSync() {
   const { mutate: sync } = useWeightSync()
+
+  useEffect(() => {
+    sync()
+  }, [sync])
+
+  return null
+}
+
+function ActivitySync() {
+  const { mutate: sync } = useActivitySync()
 
   useEffect(() => {
     sync()
@@ -165,7 +178,9 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
               <ProfileSync />
               <WeightSync />
+              <ActivitySync />
               <NotificationsSync />
+              <WeeklyPlanningCheck />
               <Stack>
                 <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -173,6 +188,7 @@ export default function RootLayout() {
                 <Stack.Screen name="recipe-search" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-create" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-edit" options={{ headerShown: false }} />
+                <Stack.Screen name="recipe-detail" options={{ headerShown: false }} />
                 <Stack.Screen name="recipe-generate" options={{ headerShown: false }} />
                 <Stack.Screen name="provision-add" options={{ headerShown: false }} />
                 <Stack.Screen name="goal-edit" options={{ headerShown: false }} />

@@ -1,64 +1,12 @@
-import { createStore } from 'jotai'
-
 import type { FoodProduct } from '@/src/models/food/food.model'
-import { addCustomFood, customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
+import { searchCustomFoods } from '@/src/utils/food-search'
 
-// Helpers
 const makeFood = (overrides: Partial<FoodProduct> = {}): FoodProduct => ({
   id: 'manual-1',
   name: 'Riz basmati cuit',
   source: 'manual',
   per100g: { kcal: 130, proteines: 2.5, glucides: 28, lipides: 0.3 },
   ...overrides,
-})
-
-describe('customFoodsAtom', () => {
-  it('initialise avec un tableau vide', () => {
-    const store = createStore()
-    expect(store.get(customFoodsAtom)).toEqual([])
-  })
-
-  it("stocke une liste d'aliments", () => {
-    const store = createStore()
-    const food = makeFood()
-    store.set(customFoodsAtom, [food])
-    expect(store.get(customFoodsAtom)).toHaveLength(1)
-    expect(store.get(customFoodsAtom)[0].id).toBe('manual-1')
-  })
-})
-
-describe('addCustomFood', () => {
-  it('ajoute un aliment en tête de liste', () => {
-    const existing = makeFood({ id: 'manual-0', name: 'Poulet rôti' })
-    const newFood = makeFood({ id: 'manual-1', name: 'Riz basmati cuit' })
-    const result = addCustomFood([existing], newFood)
-    expect(result[0].id).toBe('manual-1')
-    expect(result[1].id).toBe('manual-0')
-  })
-
-  it('ajoute dans une liste vide', () => {
-    const food = makeFood()
-    const result = addCustomFood([], food)
-    expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('manual-1')
-  })
-
-  it('déduplique par id — déplace en tête si déjà présent', () => {
-    const food = makeFood({ id: 'manual-1', name: 'Riz basmati cuit' })
-    const other = makeFood({ id: 'manual-2', name: 'Poulet rôti' })
-    // food est déjà en position 1, on le ré-ajoute
-    const result = addCustomFood([other, food], food)
-    expect(result).toHaveLength(2)
-    expect(result[0].id).toBe('manual-1')
-    expect(result[1].id).toBe('manual-2')
-  })
-
-  it('ne modifie pas le tableau source (immutabilité)', () => {
-    const prev = [makeFood()]
-    const newFood = makeFood({ id: 'manual-2', name: 'Poulet rôti' })
-    addCustomFood(prev, newFood)
-    expect(prev).toHaveLength(1)
-  })
 })
 
 describe('searchCustomFoods', () => {

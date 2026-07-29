@@ -16,21 +16,22 @@ async function fetchRegenerate(params: RegenerateParams): Promise<PlannedRecipeS
     `/api/planning/week/${params.dateKey}/meals/${params.mealType}/regenerate`,
     { prompt: params.prompt },
   )
-  return planningSlotDTOtoSlot({ mealType: params.mealType, recipe: data.recipe })
+  return planningSlotDTOtoSlot({
+    date: params.dateKey,
+    mealType: params.mealType,
+    courses: data.courses,
+  })
 }
 
 export function useRegenerateMealSlot() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: fetchRegenerate,
-    onSuccess: (newSlot, variables) => {
-      queryClient.setQueryData(
-        ['planning', 'week', variables.dateKey],
-        (prev: PlannedRecipeSlot[] | undefined) => {
-          if (!prev) return [newSlot]
-          return prev.map((s) => (s.meal === variables.mealType ? newSlot : s))
-        },
-      )
+    onSuccess: () => {
+      // La lecture se fait par semaine (clé ancrée sur le lundi affiché), pas par jour :
+      // on invalide par préfixe plutôt que de recomposer le cache à la main.
+      queryClient.invalidateQueries({ queryKey: ['planning', 'week'] })
+      queryClient.invalidateQueries({ queryKey: ['recipes'] })
     },
   })
 }

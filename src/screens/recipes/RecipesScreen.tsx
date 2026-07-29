@@ -107,7 +107,7 @@ export default function RecipesScreen() {
   ].filter(Boolean).length
 
   const sourceRecipes = useMemo(
-    () => (activeTab === 'my' ? recipes : recipes.filter((r) => r.isAiGenerated)),
+    () => recipes.filter((r) => (activeTab === 'my' ? !r.isAiGenerated : r.isAiGenerated)),
     [recipes, activeTab],
   )
 

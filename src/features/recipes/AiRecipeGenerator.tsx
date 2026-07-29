@@ -20,10 +20,11 @@ import { useColors } from '@/src/hooks/use-colors'
 import { Recipe } from '@/src/models/recipe/recipe.model'
 
 type Props = {
-  onSaved?: () => void
+  onSaved?: (recipe: Recipe) => void
+  saveLabel?: string
 }
 
-export function AiRecipeGenerator({ onSaved }: Props) {
+export function AiRecipeGenerator({ onSaved, saveLabel = 'Enregistrer' }: Props) {
   const c = useColors()
   const [prompt, setPrompt] = useState('')
   const [useStock, setUseStock] = useState(false)
@@ -33,21 +34,28 @@ export function AiRecipeGenerator({ onSaved }: Props) {
   const { mutate: generateRecipe, isPending: isGenerating } = useGenerateRecipe()
   const { mutate: createRecipe, isPending: isSaving } = useCreateRecipe()
 
+  function extractErrorMessage(error: unknown, fallback: string): string {
+    if (isAxiosError(error)) {
+      const data = error.response?.data
+      if (data?.message) {
+        const firstFieldError = data?.errors
+          ? (Object.values(data.errors)[0] as string[] | undefined)?.[0]
+          : undefined
+        return firstFieldError ? `${data.message} (${firstFieldError})` : data.message
+      }
+    }
+    return fallback
+  }
+
   function handleGenerate() {
-    const trimmed = prompt.trim()
-    if (!trimmed) return
     setApiError(null)
 
     generateRecipe(
-      { prompt: trimmed, useStock },
+      { prompt: prompt.trim(), useStock },
       {
         onSuccess: (recipe) => setPreview(recipe),
         onError: (error) => {
-          if (isAxiosError(error) && error.response?.data?.message) {
-            setApiError(error.response.data.message)
-          } else {
-            setApiError('Impossible de générer une recette. Réessaie.')
-          }
+          setApiError(extractErrorMessage(error, 'Impossible de générer une recette. Réessaie.'))
         },
       },
     )
@@ -58,14 +66,14 @@ export function AiRecipeGenerator({ onSaved }: Props) {
     setApiError(null)
 
     createRecipe(preview, {
-      onSuccess: () => {
+      onSuccess: (recipe) => {
         ToastAndroid.show('Recette enregistrée', ToastAndroid.SHORT)
         setPreview(null)
         setPrompt('')
-        onSaved?.()
+        onSaved?.(recipe)
       },
-      onError: () => {
-        setApiError("Impossible d'enregistrer la recette. Réessaie.")
+      onError: (error) => {
+        setApiError(extractErrorMessage(error, "Impossible d'enregistrer la recette. Réessaie."))
       },
     })
   }
@@ -81,13 +89,13 @@ export function AiRecipeGenerator({ onSaved }: Props) {
         ]}
       >
         <Text variant="caption" color="secondary" style={{ paddingHorizontal: 4 }}>
-          Décris ce que tu as envie de manger
+          Décris ce que tu as envie de manger (optionnel)
         </Text>
         <TextInput
           testID="ai-prompt-input"
           value={prompt}
           onChangeText={setPrompt}
-          placeholder="Ex : un plat épicé et rapide avec du poulet"
+          placeholder="Ex : un plat épicé et rapide avec du poulet — ou laisse vide"
           placeholderTextColor={c.textMuted}
           multiline
           style={[
@@ -127,12 +135,12 @@ export function AiRecipeGenerator({ onSaved }: Props) {
         testID="generate-button"
         activeOpacity={0.8}
         onPress={handleGenerate}
-        disabled={isGenerating || !prompt.trim()}
+        disabled={isGenerating}
         style={[
           tw`flex-row items-center justify-center gap-2 py-4 rounded-2xl`,
           {
             backgroundColor: c.primary,
-            opacity: isGenerating || !prompt.trim() ? 0.6 : 1,
+            opacity: isGenerating ? 0.6 : 1,
           },
         ]}
       >
@@ -195,7 +203,7 @@ export function AiRecipeGenerator({ onSaved }: Props) {
                 <Ionicons name="checkmark-outline" size={16} color="#FFFFFF" />
               )}
               <Text variant="body" style={{ color: '#FFFFFF', fontWeight: '600' }}>
-                Enregistrer
+                {saveLabel}
               </Text>
             </TouchableOpacity>
           </View>

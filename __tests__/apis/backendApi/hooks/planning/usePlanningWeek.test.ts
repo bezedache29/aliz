@@ -41,14 +41,19 @@ const mockRecipe = {
   proteines: 20,
   glucides: 30,
   lipides: 10,
+  ingredients: [],
 }
 
 const planningResponse: PlanningWeekResponseDTO = {
   meals: [
-    { mealType: 'Petit-déjeuner', recipe: mockRecipe },
-    { mealType: 'Déjeuner', recipe: mockRecipe },
-    { mealType: 'Collation', recipe: mockRecipe },
-    { mealType: 'Dîner', recipe: mockRecipe },
+    {
+      date: '2026-06-24',
+      mealType: 'Petit-déjeuner',
+      courses: [{ course: '', recipe: mockRecipe }],
+    },
+    { date: '2026-06-24', mealType: 'Déjeuner', courses: [{ course: '', recipe: mockRecipe }] },
+    { date: '2026-06-24', mealType: 'Collation', courses: [{ course: '', recipe: mockRecipe }] },
+    { date: '2026-06-24', mealType: 'Dîner', courses: [{ course: '', recipe: mockRecipe }] },
   ],
 }
 
@@ -73,6 +78,15 @@ describe('usePlanningWeek', () => {
     expect(mealTypes).toContain('Déjeuner')
     expect(mealTypes).toContain('Collation')
     expect(mealTypes).toContain('Dîner')
+  })
+
+  it('reporte la date de chaque créneau', async () => {
+    mockedGet.mockResolvedValueOnce({ data: planningResponse })
+    const { result } = await renderHook(() => usePlanningWeek('2026-06-24'), {
+      wrapper: makeWrapper(),
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data!.every((s) => s.date === '2026-06-24')).toBe(true)
   })
 
   it('retourne une liste vide si aucun repas', async () => {

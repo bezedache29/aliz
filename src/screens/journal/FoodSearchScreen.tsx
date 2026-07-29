@@ -19,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -26,6 +27,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import tw from 'twrnc'
 import { z } from 'zod'
 
+import { useCreateCustomFood } from '@/src/apis/backendApi/hooks/customFoods/useCreateCustomFood'
+import { useCustomFoods } from '@/src/apis/backendApi/hooks/customFoods/useCustomFoods'
+import { useCreateJournalEntry } from '@/src/apis/backendApi/hooks/journal/useCreateJournalEntry'
+import { useDeleteStock } from '@/src/apis/backendApi/hooks/stock/useDeleteStock'
+import { useStock } from '@/src/apis/backendApi/hooks/stock/useStock'
+import { useUpdateStock } from '@/src/apis/backendApi/hooks/stock/useUpdateStock'
 import { isCiqualLoaded } from '@/src/apis/ciqualApi/client'
 import { useCiqualSearch } from '@/src/apis/ciqualApi/hooks/food/useCiqualSearch'
 import { useFoodByBarcode } from '@/src/apis/openFoodFactsApi/hooks/food/useFoodByBarcode'
@@ -38,12 +45,17 @@ import dayjs from '@/src/config/dayjs'
 import { useColors } from '@/src/hooks/use-colors'
 import { FoodProduct } from '@/src/models/food/food.model'
 import { MealType, PlannedMeal } from '@/src/models/planning/planning.model'
-import { addCustomFood, customFoodsAtom, searchCustomFoods } from '@/src/store/customFoodsAtom'
+import {
+  buildStockDeduction,
+  deductStockQuantity,
+  stockItemToFoodProduct,
+  type StockDeduction,
+} from '@/src/models/stock/stock-item.model'
 import { pendingIngredientAtom } from '@/src/store/pendingIngredientAtom'
-import { weekPlanAtom } from '@/src/store/planningAtom'
 import { addToRecent, recentFoodsAtom } from '@/src/store/recentFoodsAtom'
+import { searchCustomFoods } from '@/src/utils/food-search'
 
-type SearchMode = 'favorites' | 'barcode' | 'apis'
+type SearchMode = 'stock' | 'favorites' | 'barcode' | 'apis'
 type FoodSource = 'openfoodfacts' | 'ciqual'
 
 const manualFoodSchema = z.object({
@@ -72,6 +84,7 @@ const MODES: {
   label: string
   icon: React.ComponentProps<typeof Ionicons>['name']
 }[] = [
+  { key: 'stock', label: 'Provisions', icon: 'basket-outline' },
   { key: 'favorites', label: 'Récents', icon: 'star-outline' },
   { key: 'barcode', label: 'Scan', icon: 'barcode-outline' },
   { key: 'apis', label: 'Recherche', icon: 'search-outline' },
@@ -104,6 +117,11 @@ function isValidFood(f: FoodProduct): boolean {
   return f.id != null && typeof f.per100g?.kcal === 'number'
 }
 
+function formatStockQuantity(quantity: number, unit: string): string {
+  const q = Number.isInteger(quantity) ? quantity : Math.round(quantity * 10) / 10
+  return `${q} ${unit}`
+}
+
 function calcMacros(food: FoodProduct, grams: number) {
   const per100g = food.per100g
   if (!per100g) return { kcal: 0, proteines: 0, glucides: 0, lipides: 0 }
@@ -132,6 +150,7 @@ function FoodItem({
   isSelected,
   quantityStr,
   preview,
+  stockLabel,
   onPress,
   onChangeQuantity,
   onAdd,
@@ -141,6 +160,7 @@ function FoodItem({
   isSelected: boolean
   quantityStr: string
   preview: ReturnType<typeof calcMacros> | null
+  stockLabel?: string
   onPress: () => void
   onChangeQuantity: (v: string) => void
   onAdd: (unitInfo?: { count: number; weightG: number }, displayUnit?: string) => void
@@ -223,6 +243,13 @@ function FoodItem({
               <View style={[tw`px-1.5 py-0.5 rounded`, { backgroundColor: c.primary + '20' }]}>
                 <Text variant="label" style={{ color: c.primary, fontSize: 10 }}>
                   Perso
+                </Text>
+              </View>
+            )}
+            {stockLabel && (
+              <View style={[tw`px-1.5 py-0.5 rounded`, { backgroundColor: c.surfaceElevated }]}>
+                <Text variant="label" color="secondary" style={{ fontSize: 10 }}>
+                  {stockLabel}
                 </Text>
               </View>
             )}
@@ -637,11 +664,19 @@ export default function FoodSearchScreen() {
   const router = useRouter()
   const { mealType, context } = useLocalSearchParams<{ mealType: string; context: string }>()
   const c = useColors()
-  const setWeekPlan = useSetAtom(weekPlanAtom)
+  const { mutate: createJournalEntry } = useCreateJournalEntry()
   const [recentFoodsRaw, setRecentFoods] = useAtom(recentFoodsAtom)
-  const [customFoodsRaw, setCustomFoods] = useAtom(customFoodsAtom)
+  const { data: customFoodsRaw = [] } = useCustomFoods()
+  const { mutate: createCustomFood } = useCreateCustomFood()
+  const { data: stockItems = [] } = useStock()
+  const { mutate: updateStock } = useUpdateStock()
+  const { mutate: deleteStock } = useDeleteStock()
   const recentFoods = recentFoodsRaw.filter((f) => typeof f.per100g?.kcal === 'number')
   const customFoods = customFoodsRaw.filter((f) => typeof f.per100g?.kcal === 'number')
+  const stockFoods = stockItems
+    .map(stockItemToFoodProduct)
+    .filter((f): f is FoodProduct => f !== null)
+  const stockItemsById = new Map(stockItems.map((s) => [s.id, s]))
   const setPendingIngredient = useSetAtom(pendingIngredientAtom)
   const isRecipeMode = context === 'recipe'
   const todayKey = dayjs().format('YYYY-MM-DD')
@@ -763,7 +798,7 @@ export default function FoodSearchScreen() {
         lipides: data.lipides,
       },
     }
-    setCustomFoods((prev) => addCustomFood(prev, food))
+    createCustomFood({ name: food.name, brand: food.brand, per100g: food.per100g })
 
     if (isRecipeMode) {
       setPendingIngredient({ food, quantityG: data.quantite })
@@ -775,18 +810,14 @@ export default function FoodSearchScreen() {
 
     if (mealType) {
       const macros = calcMacros(food, data.quantite)
-      const meal: PlannedMeal = {
-        id: `${Date.now()}-${food.id}`,
+      const meal: Omit<PlannedMeal, 'id'> = {
         name: food.brand ? `${food.name} (${food.brand})` : food.name,
         meal: mealType as MealType,
         ...macros,
         quantityG: data.quantite,
         per100g: food.per100g,
       }
-      setWeekPlan((prev) => ({
-        ...prev,
-        [todayKey]: [...(prev[todayKey] ?? []), meal],
-      }))
+      createJournalEntry({ meal, dateKey: todayKey })
       setRecentFoods((prev) => addToRecent(prev, { ...food, per100g: { ...food.per100g } }))
     }
     addFoodSheetRef.current?.dismiss()
@@ -834,20 +865,32 @@ export default function FoodSearchScreen() {
     if (!mealType) return
     const macros = calcMacros(food, grams)
 
-    const meal: PlannedMeal = {
-      id: `${Date.now()}-${food.id}`,
+    const stockItem = stockItems.find((s) => s.id === food.id)
+    let stockDeductions: StockDeduction[] | undefined
+    if (stockItem) {
+      const newQuantity = deductStockQuantity(stockItem, grams, unitInfo?.count)
+      stockDeductions = [buildStockDeduction(stockItem, stockItem.quantity - newQuantity)]
+      if (newQuantity <= 0) {
+        deleteStock(stockItem.id)
+        ToastAndroid.show(`${stockItem.name} : provisions épuisées`, ToastAndroid.SHORT)
+      } else {
+        updateStock({ ...stockItem, quantity: newQuantity })
+        ToastAndroid.show(`Provisions mises à jour : ${stockItem.name}`, ToastAndroid.SHORT)
+      }
+    }
+
+    const meal: Omit<PlannedMeal, 'id'> = {
       name: food.brand ? `${food.name} (${food.brand})` : food.name,
       meal: mealType as MealType,
       ...macros,
       quantityG: grams,
       per100g: food.per100g,
+      ...(stockDeductions ? { stockDeductions } : {}),
     }
 
-    setWeekPlan((prev) => ({
-      ...prev,
-      [todayKey]: [...(prev[todayKey] ?? []), meal],
-    }))
+    createJournalEntry({ meal, dateKey: todayKey })
     setRecentFoods((prev) => addToRecent(prev, food))
+
     router.back()
   }
 
@@ -864,6 +907,8 @@ export default function FoodSearchScreen() {
         })
       : recentFoods
   ).filter(isValidFood)
+
+  const filteredStock = searchCustomFoods(stockFoods, query).filter(isValidFood)
 
   const foodItemProps = {
     quantityStr,
@@ -919,8 +964,8 @@ export default function FoodSearchScreen() {
           })}
         </View>
 
-        {/* Barre de recherche — Récents et APIs */}
-        {(mode === 'favorites' || mode === 'apis') && (
+        {/* Barre de recherche — Provisions, Récents et APIs */}
+        {(mode === 'stock' || mode === 'favorites' || mode === 'apis') && (
           <View
             style={[
               tw`flex-row items-center mx-4 mb-3 px-4 rounded-xl gap-3`,
@@ -931,7 +976,11 @@ export default function FoodSearchScreen() {
             <TextInput
               ref={searchInputRef}
               placeholder={
-                mode === 'favorites' ? 'Filtrer mes récents...' : 'Rechercher un aliment...'
+                mode === 'stock'
+                  ? 'Filtrer mes provisions...'
+                  : mode === 'favorites'
+                    ? 'Filtrer mes récents...'
+                    : 'Rechercher un aliment...'
               }
               placeholderTextColor={c.textMuted}
               value={query}
@@ -948,7 +997,46 @@ export default function FoodSearchScreen() {
         )}
 
         {/* Contenu selon le mode */}
-        {mode === 'favorites' ? (
+        {mode === 'stock' ? (
+          stockFoods.length === 0 ? (
+            <EmptyState
+              icon="basket-outline"
+              title="Aucune provision"
+              description="Les aliments avec macros renseignées de tes provisions apparaîtront ici."
+              c={c}
+            />
+          ) : filteredStock.length === 0 ? (
+            <EmptyState
+              icon="search-outline"
+              title="Aucun résultat"
+              description={`Aucune provision correspondant à « ${query} ».`}
+              c={c}
+            />
+          ) : (
+            <FlatList
+              data={filteredStock}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={tw`px-4 pb-4`}
+              renderItem={({ item }) => {
+                const stockItem = stockItemsById.get(item.id)
+                return (
+                  <FoodItem
+                    item={item}
+                    isSelected={selectedFood?.id === item.id}
+                    onPress={() => handleSelectFood(item)}
+                    stockLabel={
+                      stockItem
+                        ? formatStockQuantity(stockItem.quantity, stockItem.unit)
+                        : undefined
+                    }
+                    {...foodItemProps}
+                  />
+                )
+              }}
+            />
+          )
+        ) : mode === 'favorites' ? (
           recentFoods.length === 0 ? (
             <EmptyState
               icon="star-outline"
